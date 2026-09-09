@@ -96,7 +96,7 @@ CI performs the same structural checks on pull requests.
 
 `@Dborasik` is listed in `.github/CODEOWNERS` for the entire repository. The owner-approval workflow verifies that contributor PRs have an `APPROVED` review from `@Dborasik` for the **current head commit**. If the contributor pushes another commit, that approval becomes stale and a new approval is required.
 
-Repository branch/ruleset settings must require both protocol validation and owner approval before merge. The intended settings are documented in `.github/REPOSITORY_SETTINGS.md`.
+Protected branches are expected to require both protocol validation and the owner-approval status check before merge.
 
 ## Contribution license
 
