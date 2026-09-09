@@ -1,0 +1,61 @@
+name: Require owner approval
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  owner-approval:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require current-head approval from repository owner
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const requiredReviewer = 'Dborasik';
+
+            // GitHub does not allow a PR author to approve their own PR.
+            // Owner-authored maintenance PRs are therefore exempt from this
+            // specific check; normal validation checks still apply.
+            if (pr.user.login.toLowerCase() === requiredReviewer.toLowerCase()) {
+              core.notice('Owner-authored PR: explicit self-approval is not possible on GitHub.');
+              return;
+            }
+
+            const reviews = await github.paginate(
+              github.rest.pulls.listReviews,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                per_page: 100,
+              }
+            );
+
+            const currentHead = pr.head.sha;
+            const ownerReviewsForHead = reviews
+              .filter(review =>
+                review.user?.login?.toLowerCase() === requiredReviewer.toLowerCase() &&
+                review.commit_id === currentHead
+              )
+              .sort((a, b) => new Date(a.submitted_at ?? 0) - new Date(b.submitted_at ?? 0));
+
+            const latest = ownerReviewsForHead.at(-1);
+
+            if (!latest || latest.state !== 'APPROVED') {
+              core.setFailed(
+                `Contributor PR requires an APPROVED review from @${requiredReviewer} ` +
+                `for current head ${currentHead}. A new push requires a new approval.`
+              );
+              return;
+            }
+
+            core.notice(`Current head approved by @${requiredReviewer}.`);

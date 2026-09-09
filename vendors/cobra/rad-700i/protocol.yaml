@@ -1,0 +1,227 @@
+schema_version: "1.0"
+protocol_id: cobra.rad-700i
+contract_revision: 1
+
+vendor:
+  name: Cobra
+  slug: cobra
+
+device:
+  model: RAD 700i
+  family: RAD
+  hardware_revisions: []
+  firmware_scope:
+    - version: unknown
+      notes: Initial public observations do not identify the detector firmware version. Treat handle values and packet interpretations as firmware-scoped until reproduced.
+
+coverage: partial
+
+transports:
+  - id: ble-main
+    kind: bluetooth-le
+    confidence: observed
+    role: Detector-to-companion-client communication
+    evidence:
+      - car-hud-implementation
+      - cobra-product-page
+    notes:
+      - Cobra documents Bluetooth/Drive Smarter support for the RAD 700i.
+      - A public third-party implementation reports successful connection to a physical RAD 700i and subscription to alert/GPS notifications.
+    endpoints:
+      - id: alert-characteristic
+        kind: ble-characteristic
+        identifier: b5e22deb-31ee-42ab-be6a-9be0837aa344
+        confidence: observed
+        properties:
+          - read
+          - notify
+        observed_handles:
+          - value: "0x0024"
+            confidence: observed
+            firmware: null
+            evidence:
+              - car-hud-implementation
+        evidence:
+          - car-hud-implementation
+        notes:
+          - GATT handles are not canonical and may differ by firmware or GATT table revision.
+
+      - id: gps-characteristic
+        kind: ble-characteristic
+        identifier: 0000fe51-8e22-4541-9d4c-21edae82ed19
+        confidence: observed
+        properties:
+          - read
+          - notify
+        observed_handles:
+          - value: "0x000e"
+            confidence: observed
+            firmware: null
+            evidence:
+              - car-hud-implementation
+        evidence:
+          - car-hud-implementation
+        notes:
+          - The characteristic's GPS interpretation has not been independently reproduced by this repository.
+
+messages:
+  - id: radar-alert
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Radar/laser alert notification or readable alert state.
+    minimum_length: 1
+    evidence:
+      - car-hud-implementation
+    fields:
+      - name: band_code
+        offset: 0
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        evidence:
+          - car-hud-implementation
+        values:
+          "0x00":
+            meaning: No active alert / alert cleared
+            confidence: inferred
+            evidence:
+              - car-hud-implementation
+          "0x01":
+            meaning: X band
+            confidence: observed
+            evidence:
+              - car-hud-implementation
+          "0x02":
+            meaning: K band
+            confidence: observed
+            evidence:
+              - car-hud-implementation
+          "0x04":
+            meaning: Ka band
+            confidence: observed
+            evidence:
+              - car-hud-implementation
+          "0x08":
+            meaning: Laser
+            confidence: observed
+            evidence:
+              - car-hud-implementation
+          "0x10":
+            meaning: Ka POP
+            confidence: observed
+            evidence:
+              - car-hud-implementation
+          "0x20":
+            meaning: K POP
+            confidence: observed
+            evidence:
+              - car-hud-implementation
+        notes:
+          - The public implementation treats byte 0 as a single enum value. Whether values can be combined as a bitfield is unknown.
+
+      - name: signal_strength
+        offset: 1
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        evidence:
+          - car-hud-implementation
+        notes:
+          - The public implementation interprets byte 1 as alert strength and caps its displayed value at 10.
+          - The actual raw range, scaling, and semantics have not been independently characterized.
+
+  - id: gps-update
+    transport: ble-main
+    endpoint: gps-characteristic
+    direction: detector-to-client
+    confidence: hypothesis
+    description: Candidate GPS state packet carried by the GPS characteristic.
+    minimum_length: 12
+    evidence:
+      - car-hud-implementation
+    fields:
+      - name: latitude
+        offset: 0
+        length: 4
+        type: i32
+        endianness: little
+        confidence: hypothesis
+        scale: 0.0000001
+        unit: degrees
+        evidence:
+          - car-hud-implementation
+      - name: longitude
+        offset: 4
+        length: 4
+        type: i32
+        endianness: little
+        confidence: hypothesis
+        scale: 0.0000001
+        unit: degrees
+        evidence:
+          - car-hud-implementation
+      - name: speed
+        offset: 8
+        length: 2
+        type: u16
+        endianness: little
+        confidence: hypothesis
+        unit: unknown
+        evidence:
+          - car-hud-implementation
+      - name: heading
+        offset: 10
+        length: 2
+        type: u16
+        endianness: little
+        confidence: hypothesis
+        unit: unknown
+        evidence:
+          - car-hud-implementation
+    notes:
+      - This 12-byte layout is a candidate parser from a public implementation, not a repository-confirmed wire format.
+      - The same implementation contains a second fallback parse for shorter values, which is documented in packets.md rather than treated as canonical.
+
+hypotheses:
+  - id: gps-short-layout
+    confidence: hypothesis
+    description: A public implementation attempts a second GPS decode for payloads of at least 6 bytes using latitude i32 little-endian scaled by 1e-6 and longitude i16 little-endian scaled by 1e-4.
+    evidence:
+      - car-hud-implementation
+    test_needed: Capture raw GPS characteristic notifications with known coordinates and compare payload lengths and decoded values across GPS lock states.
+
+  - id: alert-band-bitfield
+    confidence: unknown
+    description: The band-code values are powers of two, but the available implementation treats byte 0 as a single enum. It is unknown whether simultaneous/combined values are valid bit flags.
+    evidence:
+      - car-hud-implementation
+    test_needed: Capture notifications during overlapping or multi-signal alerts and check whether byte 0 combines values.
+
+sources:
+  - id: car-hud-implementation
+    type: public-implementation
+    title: Car-HUD Cobra RAD 700i service
+    author: grabercn
+    url: https://github.com/grabercn/Car-HUD/blob/a5692f7a0260cc787a0b6cee7db1a908c3255520/src/cobra_service.py
+    commit: a5692f7a0260cc787a0b6cee7db1a908c3255520
+    accessed: "2026-09-09"
+    notes: Public implementation that reports successful physical-device RAD 700i BLE integration. Used as the initial source for UUIDs, observed handles, alert mappings, and candidate GPS parsing. No source code is copied into this protocol contract.
+
+  - id: cobra-product-page
+    type: vendor-documentation
+    title: Cobra RAD 700i product page
+    author: Cobra
+    url: https://www.cobra.com/products/rad700i
+    commit: null
+    accessed: "2026-09-09"
+    notes: Vendor source confirming built-in Bluetooth connectivity and Drive Smarter integration.
+
+notes:
+  - This entry intentionally distinguishes observations from candidate interpretations.
+  - Exact radar frequency, settings writes, pairing/authentication behavior, cloud/community-alert exchange, lockout synchronization, and firmware update protocol are not yet documented here.
+
+last_updated: "2026-09-09"

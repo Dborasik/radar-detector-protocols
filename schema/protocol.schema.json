@@ -1,0 +1,539 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Radar detector protocol contract",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "protocol_id",
+    "contract_revision",
+    "vendor",
+    "device",
+    "coverage",
+    "transports",
+    "messages",
+    "sources",
+    "last_updated"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "protocol_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "vendor": {
+      "type": "object",
+      "required": [
+        "name",
+        "slug"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "device": {
+      "type": "object",
+      "required": [
+        "model"
+      ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hardware_revisions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "firmware_scope": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "version",
+              "notes"
+            ],
+            "properties": {
+              "version": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "coverage": {
+      "type": "string",
+      "enum": [
+        "stub",
+        "partial",
+        "substantial",
+        "complete-claimed"
+      ]
+    },
+    "transports": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/transport"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/message"
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hypothesis"
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date"
+    },
+    "contract_revision": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "observed",
+        "inferred",
+        "hypothesis",
+        "disputed",
+        "unknown"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "transport": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "confidence",
+        "role",
+        "endpoints"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "bluetooth-le",
+            "bluetooth-classic",
+            "usb",
+            "serial",
+            "wifi-tcp",
+            "wifi-udp",
+            "http",
+            "websocket",
+            "proprietary-bus",
+            "other"
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "role": {
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "endpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/endpoint"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "endpoint": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "identifier",
+        "confidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ble-characteristic",
+            "ble-service",
+            "rfcomm-channel",
+            "usb-endpoint",
+            "socket",
+            "http-route",
+            "other"
+          ]
+        },
+        "identifier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "properties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "observed_handles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "value",
+              "confidence"
+            ],
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "confidence": {
+                "$ref": "#/$defs/confidence"
+              },
+              "firmware": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evidence": {
+                "$ref": "#/$defs/evidence"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "message": {
+      "type": "object",
+      "required": [
+        "id",
+        "transport",
+        "endpoint",
+        "direction",
+        "confidence",
+        "description",
+        "fields"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "transport": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "detector-to-client",
+            "client-to-detector",
+            "bidirectional",
+            "unknown"
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "description": {
+          "type": "string"
+        },
+        "minimum_length": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "field": {
+      "type": "object",
+      "required": [
+        "name",
+        "offset",
+        "length",
+        "type",
+        "confidence"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "type": {
+          "type": "string"
+        },
+        "endianness": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "little",
+            "big",
+            null
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "scale": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "meaning",
+              "confidence"
+            ],
+            "properties": {
+              "meaning": {
+                "type": "string"
+              },
+              "confidence": {
+                "$ref": "#/$defs/confidence"
+              },
+              "evidence": {
+                "$ref": "#/$defs/evidence"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "hypothesis": {
+      "type": "object",
+      "required": [
+        "id",
+        "confidence",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "description": {
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "test_needed": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "title",
+        "accessed"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "vendor-documentation",
+            "public-implementation",
+            "capture",
+            "experiment",
+            "analysis",
+            "other"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "accessed": {
+          "type": "string",
+          "format": "date"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+"
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "url"
+          ]
+        },
+        {
+          "required": [
+            "path"
+          ]
+        }
+      ]
+    }
+  }
+}
