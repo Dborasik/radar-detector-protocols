@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Radar detector protocol registry",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "protocols"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "protocols": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "contract_revision",
+          "vendor",
+          "model",
+          "path",
+          "transports",
+          "coverage",
+          "last_updated"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "transports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverage": {
+            "type": "string",
+            "enum": [
+              "stub",
+              "partial",
+              "substantial",
+              "complete-claimed"
+            ]
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date"
+          },
+          "contract_revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
