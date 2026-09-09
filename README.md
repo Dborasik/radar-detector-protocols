@@ -39,7 +39,7 @@ Machine-readable index: [`registry.yaml`](registry.yaml)
 │           ├── captures/         # Sanitized raw captures + metadata
 │           └── examples/         # Annotated examples, never fabricated captures
 ├── scripts/validate.py           # Contract validation
-└── .github/                      # PR/issue templates and CI
+└── .github/                      # PR/issue templates, ownership, and CI
 ```
 
 ## Confidence levels
@@ -55,7 +55,13 @@ Protocol fields use one of these confidence levels:
 
 See [`docs/CONFIDENCE.md`](docs/CONFIDENCE.md). Contract/schema versioning is defined in [`docs/VERSIONING.md`](docs/VERSIONING.md).
 
-## Adding a detector
+## Contributing
+
+Contributions are expected to come through pull requests, including contributions from forks. Every contribution must include enough evidence to justify the documented confidence level and must pass repository validation.
+
+`@Dborasik` is the repository code owner. Contributor pull requests require a current-head approval from the repository owner before they are considered merge-ready. See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`.github/REPOSITORY_SETTINGS.md`](.github/REPOSITORY_SETTINGS.md).
+
+To add a detector:
 
 1. Copy the closest existing vendor/model directory.
 2. Choose a stable protocol ID: `<vendor-slug>.<model-slug>`.
@@ -65,8 +71,6 @@ See [`docs/CONFIDENCE.md`](docs/CONFIDENCE.md). Contract/schema versioning is de
 6. Run `python scripts/validate.py`.
 7. Open a PR with evidence and firmware/hardware scope.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+Licensed under the **Apache License 2.0**. See [`LICENSE`](LICENSE) and [`NOTICE.md`](NOTICE.md).
