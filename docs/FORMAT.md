@@ -36,3 +36,7 @@ BLE attribute handles are observations, not stable protocol identifiers. Firmwar
 ## Reserved and unknown data
 
 Unknown bytes should remain explicit. Do not silently discard them from packet diagrams. Use `unknown` or `reserved` names and a low confidence level until their behavior is understood.
+
+## Evidence sources
+
+A source may point to either a public `url` or a repository-relative `path`. Use `path` for committed captures, experiment notes, or other in-repository evidence so contributors do not need to fabricate a GitHub URL before a PR exists. Repository-relative paths are validated for existence.
