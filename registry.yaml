@@ -1,11 +1,11 @@
 schema_version: "1.0"
 protocols:
   - id: cobra.rad-700i
-    contract_revision: 1
+    contract_revision: 2
     vendor: Cobra
     model: RAD 700i
     path: vendors/cobra/rad-700i/protocol.yaml
     transports:
       - bluetooth-le
     coverage: partial
-    last_updated: "2026-09-09"
+    last_updated: "2026-09-11"
