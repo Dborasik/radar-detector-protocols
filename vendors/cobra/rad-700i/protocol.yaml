@@ -1,6 +1,6 @@
 schema_version: "1.0"
 protocol_id: cobra.rad-700i
-contract_revision: 1
+contract_revision: 2
 
 vendor:
   name: Cobra
@@ -11,8 +11,8 @@ device:
   family: RAD
   hardware_revisions: []
   firmware_scope:
-    - version: unknown
-      notes: Initial public observations do not identify the detector firmware version. Treat handle values and packet interpretations as firmware-scoped until reproduced.
+    - version: M1.2.3.6
+      notes: Version response in the 2026-09-11 Drive Smarter capture contained bytes 40 4D 31 2E 32 2E 33 2E 36 00, including ASCII M1.2.3.6 after leading 0x40.
 
 coverage: partial
 
@@ -20,14 +20,39 @@ transports:
   - id: ble-main
     kind: bluetooth-le
     confidence: observed
-    role: Detector-to-companion-client communication
+    role: Bidirectional detector/companion-client communication
     evidence:
       - car-hud-implementation
       - cobra-product-page
+      - drive-smarter-capture-2026-09-11
     notes:
-      - Cobra documents Bluetooth/Drive Smarter support for the RAD 700i.
-      - A public third-party implementation reports successful connection to a physical RAD 700i and subscription to alert/GPS notifications.
+      - A physical RAD 700i Drive Smarter HCI capture directly observes client writes and detector notifications.
+      - GATT handles are observations and are not canonical identifiers.
     endpoints:
+      - id: cobra-primary-service
+        kind: ble-service
+        identifier: 2a668fa4-2902-4468-8568-3ebe69a930a0
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+      - id: tx-characteristic
+        kind: ble-characteristic
+        identifier: b5e22dea-31ee-42ab-be6a-9be0837aa344
+        confidence: observed
+        properties:
+          - write
+        observed_handles:
+          - value: "0x0022"
+            confidence: observed
+            firmware: M1.2.3.6
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+        notes:
+          - Drive Smarter client-to-detector F5 frames were directly observed on this characteristic.
+
       - id: alert-characteristic
         kind: ble-characteristic
         identifier: b5e22deb-31ee-42ab-be6a-9be0837aa344
@@ -41,10 +66,16 @@ transports:
             firmware: null
             evidence:
               - car-hud-implementation
+          - value: "0x0024"
+            confidence: observed
+            firmware: M1.2.3.6
+            evidence:
+              - drive-smarter-capture-2026-09-11
         evidence:
           - car-hud-implementation
+          - drive-smarter-capture-2026-09-11
         notes:
-          - GATT handles are not canonical and may differ by firmware or GATT table revision.
+          - Carries alert-state traffic and framed detector-to-client protocol traffic.
 
       - id: gps-characteristic
         kind: ble-characteristic
@@ -119,9 +150,6 @@ messages:
             confidence: observed
             evidence:
               - car-hud-implementation
-        notes:
-          - The public implementation treats byte 0 as a single enum value. Whether values can be combined as a bitfield is unknown.
-
       - name: signal_strength
         offset: 1
         length: 1
@@ -131,8 +159,9 @@ messages:
         evidence:
           - car-hud-implementation
         notes:
-          - The public implementation interprets byte 1 as alert strength and caps its displayed value at 10.
-          - The actual raw range, scaling, and semantics have not been independently characterized.
+          - The seed implementation treats byte 1 as alert strength and caps its displayed value at 10; actual scaling is not independently characterized.
+    notes:
+      - Whether band codes can combine as a bitfield is unknown.
 
   - id: gps-update
     transport: ble-main
@@ -183,8 +212,548 @@ messages:
         evidence:
           - car-hud-implementation
     notes:
-      - This 12-byte layout is a candidate parser from a public implementation, not a repository-confirmed wire format.
-      - The same implementation contains a second fallback parse for shorter values, which is documented in packets.md rather than treated as canonical.
+      - The same public implementation has a shorter fallback layout; see packets.md.
+
+  - id: client-auth-challenge
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Client-originated Bluetooth protocol authentication challenge.
+    minimum_length: 13
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xA3":
+            meaning: Client-originated Bluetooth protocol authentication challenge
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: challenge
+        offset: 3
+        length: 10
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+    notes:
+      - Two distinct Drive Smarter challenge payloads were captured.
+
+  - id: detector-auth-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Detector response to the client-originated authentication challenge.
+    minimum_length: 13
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xA2":
+            meaning: Detector response to the client-originated authentication challenge
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: response
+        offset: 3
+        length: 10
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+    notes:
+      - Captured A3 to A2 pairs exactly match the compatible-family BLE smartphone-key XTEA transform.
+
+  - id: client-auth-status
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Client authentication status/acknowledgement after a valid detector response.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xA5":
+            meaning: Client authentication status/acknowledgement
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: status
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x00":
+            meaning: Drive Smarter value observed after a valid detector response
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: detector-auth-challenge
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Detector-originated Bluetooth protocol authentication challenge.
+    minimum_length: 13
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xA1":
+            meaning: Detector-originated Bluetooth protocol authentication challenge
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: challenge
+        offset: 3
+        length: 10
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: client-auth-response
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Client response to a detector-originated authentication challenge.
+    minimum_length: 13
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xA4":
+            meaning: Client response to a detector-originated authentication challenge
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: response
+        offset: 3
+        length: 10
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+    notes:
+      - Captured A1 to A4 pairs exactly match the compatible-family BLE smartcord-key XTEA transform.
+
+  - id: detector-auth-status
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Detector authentication status after the client response.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xA3":
+            meaning: Detector authentication status
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: status
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x00":
+            meaning: Value observed after a valid A4 response
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: status-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Status request.
+    minimum_length: 3
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x94":
+            meaning: Status request
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: status-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Status response.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x99":
+            meaning: Status response
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: status
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x03":
+            meaning: Value observed during normal Drive Smarter sessions
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: model-info-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Model information response.
+    minimum_length: 13
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x95":
+            meaning: Model information response
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: model_payload
+        offset: 3
+        length: 10
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+        notes:
+          - Observed payload contains ASCII RAD 700i after leading 0x03.
+
+  - id: version-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Version response.
+    minimum_length: 13
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x92":
+            meaning: Version response
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: version_payload
+        offset: 3
+        length: 10
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+        notes:
+          - Observed payload contains ASCII M1.2.3.6 after leading 0x40.
+
+  - id: display-capabilities-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Display capabilities response.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xA8":
+            meaning: Display capabilities response
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: capability_flags
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x07":
+            meaning: Capability byte observed on the RAD 700i
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+        notes:
+          - Compatible-family research maps bits 0, 1, and 2 to beep, display-message, and display-location support; those individual semantics were not isolated in this capture.
+
+  - id: display-length-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Display length response.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x85":
+            meaning: Display length response
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: display_length
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x0A":
+            meaning: Observed display length value 10
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: speed-limit-update
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Posted speed-limit update used by Drive Smarter.
+    minimum_length: 5
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xA9":
+            meaning: Posted speed-limit update used by Drive Smarter
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: speed_low7
+        offset: 3
+        length: 1
+        type: u7
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-capture-2026-09-11
+          - esclib-compatible-protocol
+      - name: speed_high7
+        offset: 4
+        length: 1
+        type: u7
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-capture-2026-09-11
+          - esclib-compatible-protocol
+    notes:
+      - F5 03 A9 19 00 was repeatedly observed. Exact mph/km/h presentation was not independently varied in this capture.
+
+  - id: actual-speed-update
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Current vehicle-speed update used by Drive Smarter.
+    minimum_length: 5
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xAA":
+            meaning: Current vehicle-speed update used by Drive Smarter
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: speed_low7
+        offset: 3
+        length: 1
+        type: u7
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-capture-2026-09-11
+          - esclib-compatible-protocol
+      - name: speed_high7
+        offset: 4
+        length: 1
+        type: u7
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-capture-2026-09-11
+          - esclib-compatible-protocol
+    notes:
+      - F5 03 AA 00 00 was repeatedly observed while the capture device was stationary.
 
 hypotheses:
   - id: gps-short-layout
@@ -196,7 +765,7 @@ hypotheses:
 
   - id: alert-band-bitfield
     confidence: unknown
-    description: The band-code values are powers of two, but the available implementation treats byte 0 as a single enum. It is unknown whether simultaneous/combined values are valid bit flags.
+    description: The band-code values are powers of two, but the seed implementation treats byte 0 as a single enum. It is unknown whether combined values are valid bit flags.
     evidence:
       - car-hud-implementation
     test_needed: Capture notifications during overlapping or multi-signal alerts and check whether byte 0 combines values.
@@ -209,7 +778,7 @@ sources:
     url: https://github.com/grabercn/Car-HUD/blob/a5692f7a0260cc787a0b6cee7db1a908c3255520/src/cobra_service.py
     commit: a5692f7a0260cc787a0b6cee7db1a908c3255520
     accessed: "2026-09-09"
-    notes: Public implementation that reports successful physical-device RAD 700i BLE integration. Used as the initial source for UUIDs, observed handles, alert mappings, and candidate GPS parsing. No source code is copied into this protocol contract.
+    notes: Seed source for alert/GPS UUIDs, handles, alert mappings, and candidate GPS parsing.
 
   - id: cobra-product-page
     type: vendor-documentation
@@ -218,10 +787,29 @@ sources:
     url: https://www.cobra.com/products/rad700i
     commit: null
     accessed: "2026-09-09"
-    notes: Vendor source confirming built-in Bluetooth connectivity and Drive Smarter integration.
+    notes: Vendor source confirming Bluetooth and Drive Smarter support.
+
+  - id: drive-smarter-capture-2026-09-11
+    type: capture
+    title: Physical RAD 700i Drive Smarter BLE session capture
+    author: null
+    path: vendors/cobra/rad-700i/captures/2026-09-11-drive-smarter-session.md
+    accessed: "2026-09-11"
+    notes: Sanitized summary derived from an Android HCI snoop capture. Directly observes F5 framing, bidirectional authentication, protocol handles, queries/responses, and recurring speed-related writes.
+
+  - id: esclib-compatible-protocol
+    type: public-implementation
+    title: esclib Escort/Cedar request, response, and BLE crypto research
+    author: qoq
+    url: https://github.com/qoq/esclib.github.io/tree/d7cf1ede44e78c2219e8f12f573024b2915f65c6
+    commit: d7cf1ede44e78c2219e8f12f573024b2915f65c6
+    accessed: "2026-09-11"
+    notes: Used to name captured command IDs and corroborate challenge/response transforms. Captured RAD 700i A3 to A2 and A1 to A4 pairs match the documented BLE transforms exactly.
 
 notes:
-  - This entry intentionally distinguishes observations from candidate interpretations.
-  - Exact radar frequency, settings writes, pairing/authentication behavior, cloud/community-alert exchange, lockout synchronization, and firmware update protocol are not yet documented here.
+  - This entry distinguishes direct RAD 700i observations from compatible-family semantic corroboration.
+  - F5 framing and the observed authentication/status/speed command IDs are directly evidenced on a physical RAD 700i.
+  - DISPLAY_MESSAGE (0x9A) and PLAY_TONE (0x9B) client-request behavior remain unconfirmed because this capture did not exercise those requests.
+  - Individual detector-setting semantics, cloud/community alerts, lockout synchronization, and firmware-update behavior remain incomplete.
 
-last_updated: "2026-09-09"
+last_updated: "2026-09-11"
