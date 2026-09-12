@@ -8,34 +8,35 @@ This directory documents the public state of RAD 700i protocol research. The can
 
 ## Currently documented
 
-- BLE alert characteristic UUID.
-- BLE GPS characteristic UUID.
-- Observed GATT handles from one public implementation, treated as non-stable observations.
-- Candidate X/K/Ka/Laser/POP alert byte values.
-- Candidate signal-strength byte.
+- Cobra primary BLE service and protocol/GPS characteristic UUIDs.
+- Observed GATT/ATT handles from physical-device implementations/captures, treated as non-stable observations.
+- F5 companion-protocol framing on a physical RAD 700i.
+- Bidirectional Drive Smarter authentication/session traffic (`A3/A2/A5` and detector-originated `A1/A4/A3`).
+- Observed Status, model, version, GPS-equipped, display-capabilities, and display-length exchanges.
+- Recurring Drive Smarter speed-limit/current-speed updates (`A9`/`AA`) with compatible-family payload interpretation.
+- Candidate X/K/Ka/Laser/POP alert byte values and signal-strength byte.
 - Candidate GPS payload layout.
 
-## Not yet documented
+The 2026-09-11 capture identifies the tested detector as `RAD 700i` and includes a version response containing `M1.2.3.6`.
+
+## Still incomplete
 
 Among other things:
 
-- Complete GATT service/descriptor map.
-- Pairing/authentication/session setup behavior.
-- Exact radar frequency representation.
-- Alert metadata beyond the currently observed bytes.
-- Reads/writes for detector configuration.
-- Sensitivity/mode synchronization.
+- Exact radar-frequency representation and richer alert metadata.
+- Controlled validation of `DISPLAY_MESSAGE (0x9A)` and client `PLAY_TONE (0x9B)` on this model.
+- One-setting-at-a-time mapping of detector settings and sensitivity/mode synchronization.
 - Mute/lockout/mark synchronization.
 - Defender/community alert exchange.
-- Firmware update transport.
-- Firmware-specific protocol differences.
+- Firmware-update transport and firmware-specific differences.
+- Controlled GPS payload validation.
 
 ## Status discipline
 
-The existing public implementation is enough to seed the registry, but not enough to call the protocol complete. In particular, the signal-strength interpretation and GPS field layout need controlled captures before promotion to stronger confidence levels.
+Direct RAD 700i observations and compatible-family semantic corroboration are kept separate. The Drive Smarter HCI capture promotes F5 framing and several command exchanges to observed status, but it does not justify promoting commands that were not exercised.
 
-See [`packets.md`](packets.md) and [`characteristics.md`](characteristics.md).
+See [`packets.md`](packets.md), [`characteristics.md`](characteristics.md), and [`captures/2026-09-11-drive-smarter-session.md`](captures/2026-09-11-drive-smarter-session.md).
 
 ## Acknowledgement
 
-Initial BLE observations were seeded from [`grabercn/Car-HUD`](https://github.com/grabercn/Car-HUD), whose public RAD 700i service reports a successful physical-device connection and alert/GPS subscriptions. See [`sources.md`](sources.md) for exact provenance. No Car-HUD source code is included here.
+Initial BLE observations were seeded from [`grabercn/Car-HUD`](https://github.com/grabercn/Car-HUD). Command naming and challenge/response behavior are additionally cross-checked against [`qoq/esclib.github.io`](https://github.com/qoq/esclib.github.io). The new F5/session evidence comes from a sanitized physical RAD 700i Drive Smarter capture. See [`sources.md`](sources.md) for provenance.
