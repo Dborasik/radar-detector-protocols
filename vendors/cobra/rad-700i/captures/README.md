@@ -1,28 +1,9 @@
 # RAD 700i captures
 
-No raw captures are included in the initial scaffold.
+Capture artifacts in this directory must be sanitized before publication. Do not commit raw system-wide Bluetooth snoop logs, account identifiers, phone identifiers, location history, or unrelated-device traffic.
 
-When adding one, include a sidecar YAML file with at least:
+## Available evidence
 
-```yaml
-capture_id: 2026-09-07-example
-file: 2026-09-07-example.pcapng
-captured_at: "2026-09-07T00:00:00Z"
-device:
-  model: RAD 700i
-  hardware_revision: unknown
-  firmware: unknown
-host:
-  platform: Linux
-  adapter: unknown
-transport: bluetooth-le
-tool: btmon
-scenario: Describe exactly what was changed or triggered.
-redactions:
-  - BLE device address
-sha256_original: null
-sha256_published: null
-notes: []
-```
+- [`2026-09-11-drive-smarter-session.md`](2026-09-11-drive-smarter-session.md) — sanitized summary of an Android Bluetooth HCI snoop capture from a physical RAD 700i connected normally to Drive Smarter. Documents the observed F5 framing, client/detector authentication exchanges, protocol handles, query/response traffic, and recurring speed-related writes.
 
-Do not publish precise GPS coordinates, persistent identifiers, account data, or secrets unless they are essential to the protocol claim and safe to disclose.
+For raw captures retained privately during analysis, record a cryptographic hash in the sanitized summary so future work can verify it came from the same source without publishing unrelated Bluetooth traffic.
