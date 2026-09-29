@@ -242,3 +242,18 @@ Exact `8B` metadata/current `8A` values are preserved in the sanitized capture s
 ### Safety consequence
 
 Read-only characterization can now replay only the exact observed inventory requests above. State-changing siblings—`83` setting change, `85` band-enable set, `93` marker-enable set, defaults, lockout, power, flash, firmware, and reset operations—remain outside the toolbox research path.
+
+
+## Candidate display-location packing
+
+RoadSage implements the compatible-family client request `DISPLAY_LOCATION (0xAD)` with a five-byte payload. Its packing logic uses seven-bit-safe fields containing:
+
+- alert/location type;
+- distance split across multiple bytes;
+- heading represented at half-degree resolution;
+- an age field;
+- a database/source flag.
+
+The exact bit packing is available in the pinned RoadSage source, but this repository does **not** yet claim that the RAD 700i accepts the same layout. Cobra's own product documentation confirms that Drive Smarter can surface community/location alerts on connected detectors, so this is a high-value capture target rather than a write we should guess.
+
+Toolbox policy: keep `0xAD` blocked until a physical RAD 700i Drive Smarter capture exercises it or an equivalently strong controlled observation confirms the payload.
