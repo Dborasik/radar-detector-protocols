@@ -1057,6 +1057,21 @@ hypotheses:
       - esclib-compatible-protocol
     test_needed: Capture a physical RAD 700i Status 0x99 frame during an active alert and check whether bytes after the state byte begin with 0xA9 and correlate with the simultaneous alert notification/display.
 
+  - id: alert-a9-compatible-band-direction-map
+    confidence: hypothesis
+    description: Public Max 360 injection research maps the A9 band byte into repeating band families and maps direction/strength values 0x00-0x7F into none/front/rear/side blocks plus five signal-strength levels.
+    evidence:
+      - max360-serial-research
+    test_needed: Capture physical RAD 700i A9 alert records while recording the detector's displayed band and strength; compare multiple strengths and, where the model exposes it, direction.
+
+  - id: alert-frequency-14bit-wrap
+    confidence: hypothesis
+    description: The two A9 frequency bytes may form a 14-bit value from two 7-bit chunks, with X using the raw value, K unwrapped by adding 0x4000, and Ka unwrapped by adding 0x8000 to obtain candidate MHz.
+    evidence:
+      - max360-serial-research
+      - esclib-compatible-protocol
+    test_needed: Compare candidate decoded MHz against the physical RAD 700i displayed frequency across at least two known X/K/Ka alerts before promoting the formula.
+
   - id: alert-front-rear-five-byte-fields
     confidence: hypothesis
     description: Compatible-family A9 alert records may encode two frequency bytes, a band byte, a direction/strength byte, and one additional changing byte.
