@@ -69,11 +69,45 @@ Compatible-family tables identify `A9` as speed-limit update, `AA` as actual-spe
 
 Drive Smarter sent multiple `82 <setting-id>` requests and received `8B ...` supported-values/information responses plus `8A <setting-id> <current-value>` responses. This confirms that the settings-query family is active on the RAD 700i, but individual setting meanings should only be promoted after one-setting-at-a-time controlled captures.
 
-### Not confirmed by this capture
+### Follow-up physical toolbox observations — 2026-09-29
 
-`DISPLAY_MESSAGE (0x9A)` and client `PLAY_TONE (0x9B)` were not intentionally exercised. A display-capabilities value of `0x07` is compatible with those features, but capability bits alone are not enough to promote their request packet formats to RAD 700i-observed status.
+A later authenticated toolbox session on the physical RAD 700i exercised a small set of transient commands and observed normal background RX traffic.
 
-No firmware/reset/flash/power/lockout/marked-location operation was intentionally tested.
+#### Tone request `0x9B`
+
+The toolbox sent the compatible-family one-byte tone selector:
+
+```text
+F5 02 9B 00  -> no audible effect observed
+F5 02 9B 01  -> audible tone observed
+F5 02 9B 02  -> audible tone observed
+```
+
+This promotes the RAD 700i use of client request `0x9B` for audible tone generation to directly observed status for selector values `1` and `2`. The semantic names/durations of those selectors remain unknown; the UI should call them Tone 0/1/2 rather than "short"/"long" until isolated.
+
+#### Display message request `0x9A`
+
+The toolbox transmitted the compatible-family display-message form using selector `0x09` followed by printable ASCII. The detector produced no visible display change. This is a negative observation, not proof that the command is unsupported: the selector, required display state, or RAD 700i behavior may differ.
+
+#### Speed updates
+
+A toolbox `A9` posted-speed-limit update visibly changed the detector's posted speed-limit field. This independently validates the command interpretation on the tested RAD 700i. A toolbox `AA` current-speed update produced no visible override of the detector's current-speed display during the stationary test. Because the RAD 700i has built-in GPS, precedence between internal-GPS speed and client-provided `AA` remains unresolved.
+
+#### Periodic detector traffic
+
+The authenticated session repeatedly emitted frames including:
+
+```text
+F5 01 82
+F5 01 A7
+F5 02 99 0B
+```
+
+For detector-to-client traffic, compatible-family tables identify `0x82` as Alert Response and `0xA7` as an overspeed-warning/data request. On this RAD 700i, `F5 01 82` has zero payload and was observed while no radar alert was active, so the toolbox should treat it as "no active alerts" rather than an unknown radar signal. The physical `A7` frame has zero payload, which differs from some older compatible-family comments that annotate one data byte. Status value `0x0B` is also directly observed; its bit-level meaning remains unknown.
+
+### Not confirmed
+
+The successful tone test does not establish human-readable names for tone selectors. The display-message experiment did not produce a visible result. No firmware/reset/flash/power/lockout/marked-location operation was intentionally tested.
 
 ## Radar alert characteristic
 
