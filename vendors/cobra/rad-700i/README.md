@@ -17,6 +17,9 @@ This directory documents the public state of RAD 700i protocol research. The can
 - Physical toolbox validation that `PLAY_TONE (0x9B)` values `1` and `2` produce audible tones while value `0` produced no audible output on the tested unit.
 - Physical toolbox validation that `A9` can update the posted speed-limit display; `AA` produced no visible current-speed override in the stationary test.
 - Periodic detector protocol traffic including no-alert `F5 01 82`, `F5 01 A7`, and variable Status values including `0x0B`.
+- Exact read-only Drive Smarter inventory exchanges for current/supported band masks (`86/8C`, `8C/8F`) and marker masks (`92/97`, `95/9B`).
+- Exact setting IDs queried by Drive Smarter on the tested RAD 700i, including model-specific IDs above the older compatible-family `0x1B` range.
+- Observed but still-unknown client requests `AF` and `D1 00`; `AF` repeatedly precedes detector `AB 00`.
 - Candidate X/K/Ka/Laser/POP alert byte values and signal-strength byte.
 - Candidate GPS payload layout.
 
@@ -29,7 +32,8 @@ Among other things:
 - Exact radar-frequency representation and richer alert metadata.
 - Determine why the compatible-family `DISPLAY_MESSAGE (0x9A)` format produced no visible display change on the tested RAD 700i.
 - Characterize the exact meanings of `PLAY_TONE (0x9B)` payload values `0`, `1`, and `2`; values `1` and `2` are now audibly confirmed.
-- One-setting-at-a-time mapping of detector settings and sensitivity/mode synchronization.
+- One-setting-at-a-time mapping from the observed RAD 700i setting IDs to user-facing menu names. The wire IDs/values are now inventoried, but semantic names are not assumed from older models.
+- Bit-level mapping of the observed band and marker masks.
 - Mute/lockout/mark synchronization.
 - Defender/community alert exchange.
 - Firmware-update transport and firmware-specific differences.
