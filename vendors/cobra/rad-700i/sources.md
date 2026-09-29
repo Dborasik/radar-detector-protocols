@@ -16,6 +16,21 @@ Direct observations include:
 - recurring `A9` and `AA` writes during normal Drive Smarter operation
 - settings-query synchronization traffic
 
+## `toolbox-observations-2026-09-29`
+
+Sanitized evidence summary: [`captures/2026-09-29-toolbox-observations.md`](captures/2026-09-29-toolbox-observations.md)
+
+This evidence comes from an authenticated RAD 700i toolbox session on physical hardware. Only protocol-relevant packet bytes and visible/audible outcomes are published. No Bluetooth addresses, account data, location data, or system-wide snoop traffic are included.
+
+Direct observations include Tone 1/2 audible output, Tone 0 no audible output, visible posted-speed-limit updates through `A9`, no visible current-speed override from `AA` in the stationary test, no visible display-message result from the compatible-family `9A/09 + ASCII` form, and recurring detector frames `F5 01 82`, `F5 01 A7`, and `F5 02 99 0B`.
+
+## `teslacanalyzer-compatible-protocol`
+
+Repository: https://github.com/BluedDot-IT/TeslaCANalyzer-Controller  
+Pinned commit: `870513e99583c24c637d280c21b1b9dc2f9dc5c6`
+
+Used as independent compatible-family corroboration for the `0x9A` display-message construction, `0x9B` tone request, `0xA7` overspeed request handling, and display-location packet research. It does not by itself promote a command to RAD 700i-confirmed status.
+
 ## `esclib-compatible-protocol`
 
 Repository: https://github.com/qoq/esclib.github.io  
