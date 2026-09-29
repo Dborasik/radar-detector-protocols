@@ -38,6 +38,12 @@ Pinned commit: `d7cf1ede44e78c2219e8f12f573024b2915f65c6`
 
 Used as compatible-family corroboration for request/response command names and the BLE challenge/response transforms. The captured RAD 700i `A3 -> A2` and `A1 -> A4` pairs match the documented transforms exactly. This source is not used to promote unobserved RAD 700i commands by itself.
 
+## `max360-serial-research`
+
+Public reverse-engineering discussion: https://forum.arduino.cc/t/compare-hex-values-received-via-serial/902323
+
+A researcher working with an Escort Max 360 reports sniffing and injecting the F5 traffic and publishes an `A9` five-byte alert record interpretation (two frequency bytes, band byte, direction/strength byte, final unknown byte) plus compatible-family setting-change examples. This is used only as candidate field-layout evidence for future RAD 700i alert captures; it is not treated as direct RAD 700i evidence.
+
 ## `car-hud-implementation`
 
 **Car-HUD**, by GitHub user [`grabercn`](https://github.com/grabercn)  
