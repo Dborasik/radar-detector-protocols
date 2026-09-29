@@ -1,6 +1,6 @@
 schema_version: "1.0"
 protocol_id: cobra.rad-700i
-contract_revision: 2
+contract_revision: 3
 
 vendor:
   name: Cobra
@@ -706,7 +706,9 @@ messages:
           - drive-smarter-capture-2026-09-11
           - esclib-compatible-protocol
     notes:
-      - F5 03 A9 19 00 was repeatedly observed. Exact mph/km/h presentation was not independently varied in this capture.
+      - F5 03 A9 19 00 was repeatedly observed in Drive Smarter traffic.
+      - A later authenticated toolbox test visibly changed the detector's posted speed-limit field with A9, independently confirming the command interpretation on physical RAD 700i hardware.
+      - Exact mph/km/h presentation across the full range has not been independently varied.
 
   - id: actual-speed-update
     transport: ble-main
@@ -753,7 +755,118 @@ messages:
           - drive-smarter-capture-2026-09-11
           - esclib-compatible-protocol
     notes:
-      - F5 03 AA 00 00 was repeatedly observed while the capture device was stationary.
+      - F5 03 AA 00 00 was repeatedly observed while the Drive Smarter capture device was stationary.
+      - A later toolbox AA current-speed update produced no visible override of the detector's current-speed display during a stationary test; internal-GPS versus client-speed precedence remains unresolved.
+
+  - id: play-tone-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Transient audible-tone request.
+    minimum_length: 4
+    evidence:
+      - toolbox-observations-2026-09-29
+      - esclib-compatible-protocol
+      - teslacanalyzer-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x9B":
+            meaning: Play tone request
+            confidence: observed
+            evidence:
+              - toolbox-observations-2026-09-29
+        evidence:
+          - toolbox-observations-2026-09-29
+      - name: tone_selector
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x00":
+            meaning: No audible effect observed in the 2026-09-29 test
+            confidence: observed
+            evidence:
+              - toolbox-observations-2026-09-29
+          "0x01":
+            meaning: Audible tone observed; exact semantic name/duration unknown
+            confidence: observed
+            evidence:
+              - toolbox-observations-2026-09-29
+          "0x02":
+            meaning: Audible tone observed; exact semantic name/duration unknown
+            confidence: observed
+            evidence:
+              - toolbox-observations-2026-09-29
+        evidence:
+          - toolbox-observations-2026-09-29
+
+  - id: alert-response-frame
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: F5-framed alert response family.
+    minimum_length: 3
+    evidence:
+      - toolbox-observations-2026-09-29
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x82":
+            meaning: Alert response
+            confidence: observed
+            evidence:
+              - toolbox-observations-2026-09-29
+        evidence:
+          - toolbox-observations-2026-09-29
+    notes:
+      - F5 01 82 was repeatedly observed while no active alert was present and is therefore treated as a no-active-alert frame on the tested unit.
+      - Compatible-family research describes non-empty 0x82 payloads as 4-byte records per alert; that non-empty RAD 700i layout is not yet physically captured.
+
+  - id: overspeed-warning-request
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Detector request associated with overspeed-warning data in compatible-family implementations.
+    minimum_length: 3
+    evidence:
+      - toolbox-observations-2026-09-29
+      - esclib-compatible-protocol
+      - teslacanalyzer-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xA7":
+            meaning: Overspeed-warning/data request, compatible-family semantic corroboration
+            confidence: observed
+            evidence:
+              - toolbox-observations-2026-09-29
+              - esclib-compatible-protocol
+        evidence:
+          - toolbox-observations-2026-09-29
+    notes:
+      - The physical RAD 700i frame F5 01 A7 contains no payload in this observation, differing from some older compatible-family comments that annotate one data byte.
 
 hypotheses:
   - id: gps-short-layout
@@ -797,6 +910,23 @@ sources:
     accessed: "2026-09-11"
     notes: Sanitized summary derived from an Android HCI snoop capture. Directly observes F5 framing, bidirectional authentication, protocol handles, queries/responses, and recurring speed-related writes.
 
+  - id: toolbox-observations-2026-09-29
+    type: experiment
+    title: Physical RAD 700i toolbox transient-control and protocol-traffic observations
+    author: null
+    path: vendors/cobra/rad-700i/captures/2026-09-29-toolbox-observations.md
+    accessed: "2026-09-29"
+    notes: Sanitized physical-device observations. No Bluetooth addresses, account data, location data, or unrelated-device traffic are published.
+
+  - id: teslacanalyzer-compatible-protocol
+    type: public-implementation
+    title: TeslaCANalyzer Escort/Cobra-compatible radar packet implementation
+    author: BluedDot-IT
+    url: https://github.com/BluedDot-IT/TeslaCANalyzer-Controller/tree/870513e99583c24c637d280c21b1b9dc2f9dc5c6/main/radar
+    commit: 870513e99583c24c637d280c21b1b9dc2f9dc5c6
+    accessed: "2026-09-29"
+    notes: Independent corroboration for display-message construction, tone requests, A7 overspeed handling, and display-location packet research. Not treated as RAD 700i evidence by itself.
+
   - id: esclib-compatible-protocol
     type: public-implementation
     title: esclib Escort/Cedar request, response, and BLE crypto research
@@ -809,7 +939,8 @@ sources:
 notes:
   - This entry distinguishes direct RAD 700i observations from compatible-family semantic corroboration.
   - F5 framing and the observed authentication/status/speed command IDs are directly evidenced on a physical RAD 700i.
-  - DISPLAY_MESSAGE (0x9A) and PLAY_TONE (0x9B) client-request behavior remain unconfirmed because this capture did not exercise those requests.
+  - PLAY_TONE (0x9B) is now directly confirmed on physical RAD 700i hardware for audible selectors 1 and 2; selector 0 produced no audible output in the same test.
+  - The compatible-family DISPLAY_MESSAGE (0x9A) form was transmitted on physical hardware but produced no visible display change, so its RAD 700i semantics remain unresolved.
   - Individual detector-setting semantics, cloud/community alerts, lockout synchronization, and firmware-update behavior remain incomplete.
 
-last_updated: "2026-09-11"
+last_updated: "2026-09-29"
