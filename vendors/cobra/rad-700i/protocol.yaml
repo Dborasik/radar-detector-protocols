@@ -837,7 +837,7 @@ messages:
           - drive-smarter-capture-2026-09-11
           - esclib-compatible-protocol
         notes:
-          - Length 2 describes one repeated record: setting ID then current value.
+          - Length 2 describes one repeated record containing setting ID then current value.
           - Compatible-family research parses the remaining payload as repeated two-byte records. The RAD 700i capture confirms matching 0x8A traffic but individual setting meanings remain under physical correlation.
 
   - id: settings-information-response
