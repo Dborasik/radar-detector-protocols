@@ -81,3 +81,74 @@ The session also included requests for settings information (`82 <setting-id>`) 
 - `PLAY_TONE (9B)` as a client request was not exercised; `9B` appears as a detector response in the captured settings/query exchange and must not be conflated with the request solely from numeric coincidence.
 - Persistent setting changes were not intentionally performed.
 - Lockout, marked-location, firmware, flash, power, or reset operations were not tested.
+
+
+## Sanitized command-inventory reanalysis — 2026-09-29
+
+The original HCI capture was re-parsed offline using only the RAD 700i ATT connection and the observed TX/RX characteristic handles. The raw system-wide snoop remains private. The following exact protocol bytes contain no phone account, Bluetooth address, location history, or unrelated-device payloads.
+
+### Additional read/query traffic directly observed
+
+```text
+client -> detector  F5 02 84 00
+client -> detector  F5 01 8C
+detector -> client  F5 06 8F 27 00 00 00 06
+client -> detector  F5 01 86
+detector -> client  F5 06 8C 27 00 00 00 06
+client -> detector  F5 01 95
+detector -> client  F5 03 9B 0B 00
+client -> detector  F5 01 92
+detector -> client  F5 03 97 1B 00
+```
+
+Compatible-family tables name these as settings request, band-enables supported/current requests and responses, and marker-enables supported/current requests and responses. The byte exchanges above are directly observed on the RAD 700i; the semantic names are corroborated by compatible-family research.
+
+The capture also contains two still-unknown client requests:
+
+```text
+client -> detector  F5 01 AF
+detector -> client  F5 02 AB 00
+
+client -> detector  F5 02 D1 00
+```
+
+`AF -> AB 00` repeats in separate sessions and is therefore recorded as an observed request/response pair with unknown semantics. No deterministic application-level response to `D1 00` was isolated.
+
+### Exact read-only setting discovery observed
+
+Drive Smarter queried these setting IDs with `F5 02 82 <id>`. For each listed ID, the detector returned an `8B` information payload and an `8A` current-value pair:
+
+| ID | 8B information payload after command | 8A current value |
+|---:|---|---:|
+| `01` | `01 00 07 08 09 10` | `10` |
+| `02` | `02 00 01 02 03` | `01` |
+| `07` | `07 00 01` | `01` |
+| `0A` | `0A 00 01` | `01` |
+| `0E` | `0E 00 01` | `00` |
+| `10` | `10 00 01` | `01` |
+| `13` | `13 14 A0 05` | `00` |
+| `14` | `14 14 A0 05` | `00` |
+| `15` | `15 00 01` | `00` |
+| `16` | `16 07 02 03 01 06` | `01` |
+| `24` | `24 00 01` | `01` |
+| `25` | `25 00 01 03` | `01` |
+| `26` | `26 00 01` | `00` |
+| `28` | `28 00 01` | `00` |
+| `29` | `29 00 01` | `00` |
+| `2B` | `2B 00 01` | `00` |
+| `2C` | `2C 00 01` | `01` |
+
+The table above is direct RAD 700i wire evidence. It does **not** assign user-facing setting names to IDs. Older compatible-family research provides candidate names for some low IDs, but the RAD 700i uses additional IDs above `0x1B` and different value sets, so one-setting-at-a-time physical correlation remains required.
+
+For IDs `13` and `14`, the three information bytes `14 A0 05` match the compatible-family range convention of minimum `20`, maximum `160`, increment `5`. That interpretation remains corroborated/inferred until the RAD 700i UI setting is isolated.
+
+### Other recurring traffic recovered from the same capture
+
+```text
+detector -> client  F5 01 82
+detector -> client  F5 01 A7
+detector -> client  F5 02 A6 03
+client -> detector  F5 02 AB 00
+```
+
+Zero-payload `0x82` occurred repeatedly while there was no active radar alert. `A7` was zero-payload on the physical RAD 700i. `A6 03` was directly observed after authentication, but the meaning of request-kind value `03` remains unknown. Client `AB 00` was repeatedly sent by Drive Smarter; compatible-family research calls this overspeed-limit data with value zero/off.

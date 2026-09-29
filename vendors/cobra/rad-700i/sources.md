@@ -15,6 +15,24 @@ Direct observations include:
 - status/model/version/GPS/display query responses
 - recurring `A9` and `AA` writes during normal Drive Smarter operation
 - settings-query synchronization traffic
+- exact current/supported band-enable and marker-enable query/response traffic
+- exact RAD 700i setting IDs and numeric values queried by Drive Smarter
+- observed unknown request families retained without speculative naming
+
+## `toolbox-observations-2026-09-29`
+
+Sanitized evidence summary: [`captures/2026-09-29-toolbox-observations.md`](captures/2026-09-29-toolbox-observations.md)
+
+This evidence comes from an authenticated RAD 700i toolbox session on physical hardware. Only protocol-relevant packet bytes and visible/audible outcomes are published. No Bluetooth addresses, account data, location data, or system-wide snoop traffic are included.
+
+Direct observations include Tone 1/2 audible output, Tone 0 no audible output, visible posted-speed-limit updates through `A9`, no visible current-speed override from `AA` in the stationary test, no visible display-message result from the compatible-family `9A/09 + ASCII` form, and recurring detector frames `F5 01 82`, `F5 01 A7`, and `F5 02 99 0B`.
+
+## `teslacanalyzer-compatible-protocol`
+
+Repository: https://github.com/BluedDot-IT/TeslaCANalyzer-Controller  
+Pinned commit: `870513e99583c24c637d280c21b1b9dc2f9dc5c6`
+
+Used as independent compatible-family corroboration for the `0x9A` display-message construction, `0x9B` tone request, `0xA7` overspeed request handling, and display-location packet research. It does not by itself promote a command to RAD 700i-confirmed status.
 
 ## `esclib-compatible-protocol`
 
@@ -22,6 +40,25 @@ Repository: https://github.com/qoq/esclib.github.io
 Pinned commit: `d7cf1ede44e78c2219e8f12f573024b2915f65c6`
 
 Used as compatible-family corroboration for request/response command names and the BLE challenge/response transforms. The captured RAD 700i `A3 -> A2` and `A1 -> A4` pairs match the documented transforms exactly. This source is not used to promote unobserved RAD 700i commands by itself.
+
+## `roadsage-compatible-protocol`
+
+Repository: https://github.com/koiosdigital/RoadSage  
+Pinned commit: `6624f44ea38fcc47cbdadf3c58f942729edb13f3`
+
+RoadSage independently carries the compatible-family B5E22DE9/DEA/DEB BLE UUIDs, the F5 command table, speed-limit writes, tone writes, and a five-byte `DISPLAY_LOCATION (0xAD)` packer. The location packer combines alert type, distance, heading, age, and a database flag into seven-bit-safe fields. This is valuable candidate research for future RAD 700i community/location alert work, but it is not promoted as RAD 700i behavior without a physical capture.
+
+## `adwatch-cobra-fingerprint`
+
+Documentation: https://github.com/bensmith83/adwatch/blob/7f35567eec5d2508a946484ea664881e6f98c8fb/docs/protocols/cobra.md
+
+Adwatch independently identifies Cobra RAD/SC products using primary service UUID `2A668FA4-2902-4468-8568-3EBE69A930A0` plus model-name heuristics. This supports the broader Cobra-family BLE fingerprint but does not provide packet-level RAD 700i semantics.
+
+## `max360-serial-research`
+
+Public reverse-engineering discussion: https://forum.arduino.cc/t/compare-hex-values-received-via-serial/902323
+
+A researcher working with an Escort Max 360 reports sniffing and injecting the F5 traffic and publishes an `A9` five-byte alert record interpretation (two frequency bytes, band byte, direction/strength byte, final unknown byte) plus compatible-family setting-change examples. This is used only as candidate field-layout evidence for future RAD 700i alert captures; it is not treated as direct RAD 700i evidence.
 
 ## `car-hud-implementation`
 
@@ -38,6 +75,18 @@ Credited observations seeded from it include alert/GPS UUIDs, reported read/noti
 Cobra RAD 700i official product page: https://www.cobra.com/products/rad700i
 
 Used only for vendor-confirmed product context such as RAD 700i Bluetooth and Drive Smarter support.
+
+## `cobra-rad700i-support`
+
+Cobra RAD 700i support/manual page: https://support.cobra.com/support/solutions/articles/47001286267-cobra-rad700i
+
+Used for model-specific behavior and settings context, including the detector's built-in GPS behavior, posted speed-limit display when connected to Drive Smarter, user-facing sensitivity modes, audio features, and documented menu settings. This source does not assign protocol setting IDs.
+
+## `cobra-detector-configuration`
+
+Cobra detector configuration guide: https://support.cobra.com/support/solutions/articles/47001287181-how-should-i-configure-my-cobra-radar-detector-
+
+Used for model-specific RAD 700i sensitivity/detection behavior and built-in-GPS Auto mode. This is product behavior evidence, not packet-level evidence.
 
 ## Adding sources
 
