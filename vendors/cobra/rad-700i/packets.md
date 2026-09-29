@@ -169,3 +169,20 @@ The researcher reports deriving the fields by sniffing the detector/app traffic 
 This is **compatible-family evidence, not yet a RAD 700i field-level confirmation**. It is useful because the RAD 700i protocol already exposes detector-to-client `A9` as the compatible-family front/rear alert-response command ID, whose public tables describe five bytes per alert. The next RAD 700i test should capture an actual alert and correlate the detector's displayed band/frequency/strength with those five bytes before promoting any field semantics.
 
 The same thread also documents compatible-family `0x83` setting-change packets. Those writes are intentionally **not** exposed by the toolbox; read-only `0x82` settings discovery is used instead.
+
+
+## RAD 700i settings-mapping strategy
+
+Cobra's RAD 700i documentation gives a model-specific settings surface that does not exactly match the older compatible-family setting-name table. Documented RAD 700i user settings include Detail (More/Less), Quiet Drive, Auto Mute, Voice, Language, display color, Screen Saver, Smart Power, and Display Car Voltage; the detector also exposes alert/band settings separately.
+
+Because the physical Drive Smarter capture proves that the RAD 700i uses `82 <setting-id>` requests with `8A/8B` responses, those requests can be used to inventory numeric IDs and supported values without changing detector state. The compatible-family ID/name table is useful as a comparison aid, but **must not be copied as the RAD 700i mapping without controlled correlation**.
+
+The recommended mapping procedure is:
+
+1. read all supported IDs through `0x82` only;
+2. record the detector's current menu values without changing them;
+3. identify obvious cardinality/default matches only as hypotheses;
+4. where needed, perform a later one-setting-at-a-time Drive Smarter capture;
+5. promote an ID/name/value mapping only after the physical value transition is isolated.
+
+State-changing `0x83` writes remain outside the normal toolbox during this phase.
