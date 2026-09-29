@@ -209,3 +209,36 @@ The recommended mapping procedure is:
 5. promote an ID/name/value mapping only after the physical value transition is isolated.
 
 State-changing `0x83` writes remain outside the normal toolbox during this phase.
+
+
+## Additional read-only inventory recovered from the baseline capture
+
+A 2026-09-29 reanalysis of the original sanitized RAD 700i Drive Smarter HCI capture recovered additional exact request/response families.
+
+| Client request | Detector response | Compatible-family interpretation | RAD 700i evidence |
+|---|---|---|---|
+| `F5 01 8C` | `F5 06 8F 27 00 00 00 06` | supported band-enable mask | exact bytes observed |
+| `F5 01 86` | `F5 06 8C 27 00 00 00 06` | current band-enable mask | exact bytes observed |
+| `F5 01 95` | `F5 03 9B 0B 00` | supported marker-enable mask | exact bytes observed |
+| `F5 01 92` | `F5 03 97 1B 00` | current marker-enable mask | exact bytes observed |
+| `F5 02 84 00` | no uniquely paired response isolated | settings request | request observed |
+| `F5 01 AF` | `F5 02 AB 00` | unknown | pair repeated in multiple sessions |
+| `F5 02 D1 00` | no deterministic response isolated | unknown | request observed |
+
+The mask bytes are published raw. Individual band/marker bit meanings are not inferred from this capture.
+
+### Setting IDs directly queried by Drive Smarter
+
+The tested RAD 700i was queried with `0x82` for:
+
+```text
+01 02 07 0A 0E 10 13 14 15 16 24 25 26 28 29 2B 2C
+```
+
+This is significant because IDs `24–2C` are outside the older compatible-family setting table ending at `0x1B`. The toolbox therefore restricts its live Settings Explorer to the IDs that were actually observed and treats old setting names only as hints.
+
+Exact `8B` metadata/current `8A` values are preserved in the sanitized capture summary. IDs `13` and `14` returned `14 A0 05`, matching the older family convention for a numeric range of 20–160 in steps of 5. The range interpretation is corroborated, but the RAD 700i user-facing setting name still requires controlled correlation.
+
+### Safety consequence
+
+Read-only characterization can now replay only the exact observed inventory requests above. State-changing siblings—`83` setting change, `85` band-enable set, `93` marker-enable set, defaults, lockout, power, flash, firmware, and reset operations—remain outside the toolbox research path.
