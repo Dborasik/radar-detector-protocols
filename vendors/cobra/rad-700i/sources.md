@@ -15,6 +15,9 @@ Direct observations include:
 - status/model/version/GPS/display query responses
 - recurring `A9` and `AA` writes during normal Drive Smarter operation
 - settings-query synchronization traffic
+- exact current/supported band-enable and marker-enable query/response traffic
+- exact RAD 700i setting IDs and numeric values queried by Drive Smarter
+- observed unknown request families retained without speculative naming
 
 ## `toolbox-observations-2026-09-29`
 
