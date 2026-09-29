@@ -1050,6 +1050,13 @@ messages:
       - The physical RAD 700i frame F5 01 A7 contains no payload in this observation, differing from some older compatible-family comments that annotate one data byte.
 
 hypotheses:
+  - id: status-embedded-alert-tail
+    confidence: hypothesis
+    description: Compatible-family status responses may append an A9 front/rear alert record after the first status byte.
+    evidence:
+      - esclib-compatible-protocol
+    test_needed: Capture a physical RAD 700i Status 0x99 frame during an active alert and check whether bytes after the state byte begin with 0xA9 and correlate with the simultaneous alert notification/display.
+
   - id: alert-front-rear-five-byte-fields
     confidence: hypothesis
     description: Compatible-family A9 alert records may encode two frequency bytes, a band byte, a direction/strength byte, and one additional changing byte.
