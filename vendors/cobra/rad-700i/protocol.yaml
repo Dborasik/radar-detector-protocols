@@ -1489,6 +1489,14 @@ messages:
       - The physical RAD 700i frame F5 01 A7 contains no payload in this observation, differing from some older compatible-family comments that annotate one data byte.
 
 hypotheses:
+  - id: display-location-five-byte-pack
+    confidence: hypothesis
+    description: A compatible-family implementation packs client DISPLAY_LOCATION (0xAD) into five 7-bit-safe bytes combining alert type, distance, heading, age, and a database flag.
+    evidence:
+      - roadsage-compatible-protocol
+      - esclib-compatible-protocol
+    test_needed: Capture a real Drive Smarter community/location alert sent to the physical RAD 700i, or reproduce one in a controlled non-persistent test, then compare the exact five-byte payload before exposing this write in the toolbox.
+
   - id: status-embedded-alert-tail
     confidence: hypothesis
     description: Compatible-family status responses may append an A9 front/rear alert record after the first status byte.
@@ -1543,6 +1551,24 @@ hypotheses:
     test_needed: Capture notifications during overlapping or multi-signal alerts and check whether byte 0 combines values.
 
 sources:
+  - id: roadsage-compatible-protocol
+    type: public-implementation
+    title: RoadSage Escort/Cedar-compatible BLE implementation
+    author: Koios Digital
+    url: https://github.com/koiosdigital/RoadSage/tree/6624f44ea38fcc47cbdadf3c58f942729edb13f3/RoadSage
+    commit: 6624f44ea38fcc47cbdadf3c58f942729edb13f3
+    accessed: "2026-09-29"
+    notes: Independent compatible-family implementation. Corroborates the B5E22DE9/DEA/DEB service family, F5 framing, request/response command table, and provides a candidate five-byte DISPLAY_LOCATION (0xAD) payload packer. Not direct RAD 700i evidence.
+
+  - id: adwatch-cobra-fingerprint
+    type: public-implementation
+    title: Adwatch Cobra BLE fingerprint documentation
+    author: bensmith83
+    url: https://github.com/bensmith83/adwatch/blob/7f35567eec5d2508a946484ea664881e6f98c8fb/docs/protocols/cobra.md
+    commit: 7f35567eec5d2508a946484ea664881e6f98c8fb
+    accessed: "2026-09-29"
+    notes: Independent device-fingerprinting research identifying Cobra RAD/SC products by the 2A668FA4 primary UUID plus marketing model name. Used only as corroboration of the broader Cobra BLE family fingerprint.
+
   - id: max360-serial-research
     type: analysis
     title: Escort Max 360 serial/F5 alert and setting reverse engineering
