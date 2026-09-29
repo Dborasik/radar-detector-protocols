@@ -801,6 +801,7 @@ messages:
           - drive-smarter-capture-2026-09-11
     notes:
       - This is a read-like discovery request. The state-changing SETTING_CHANGE request 0x83 is intentionally distinct and is not exercised by the toolbox research path.
+      - The physical Drive Smarter capture directly queried IDs 01, 02, 07, 0A, 0E, 10, 13, 14, 15, 16, 24, 25, 26, 28, 29, 2B, and 2C.
 
   - id: settings-values-response
     transport: ble-main
@@ -886,7 +887,8 @@ messages:
     notes:
       - Field length 1 describes one payload element; list settings may return multiple one-byte values after the setting ID.
       - Compatible-family research uses a single 0xF4 value after the setting ID to indicate an unsupported setting.
-      - Range-setting metadata is described by compatible-family research as three one-byte values (minimum, maximum, increment), but has not yet been physically characterized on the RAD 700i.
+      - The RAD 700i capture directly observed 8B responses for IDs 01, 02, 07, 0A, 0E, 10, 13, 14, 15, 16, 24, 25, 26, 28, 29, 2B, and 2C.
+      - IDs 13 and 14 both returned bytes 14 A0 05 after the ID. These match the compatible-family range convention of minimum 20, maximum 160, increment 5, but the user-facing setting identity remains under physical correlation.
 
   - id: speed-information-request
     transport: ble-main
@@ -938,6 +940,443 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
           - esclib-compatible-protocol
+
+  - id: settings-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Client request observed with payload 00; compatible-family research names command 0x84 SETTINGS_REQUEST.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x84":
+            meaning: Settings request in compatible-family research
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: request_value
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x00":
+            meaning: Value observed from Drive Smarter
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+    notes:
+      - A distinct response to this request was not isolated in the capture.
+
+  - id: band-enables-supported-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Read-like request for supported band-enable bits.
+    minimum_length: 3
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x8C":
+            meaning: Band enables supported request
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: band-enables-supported-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Five-byte supported band-enable mask returned after request 0x8C.
+    minimum_length: 8
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x8F":
+            meaning: Band enables supported response
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: supported_mask
+        offset: 3
+        length: 5
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+        notes:
+          - Exact RAD 700i payload observed: 27 00 00 00 06. Individual bit meanings are not yet mapped.
+
+  - id: band-enables-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Read-like request for current band-enable state.
+    minimum_length: 3
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x86":
+            meaning: Band enables request
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: band-enables-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Five-byte current band-enable state returned after request 0x86.
+    minimum_length: 8
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x8C":
+            meaning: Band enables response
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: current_mask
+        offset: 3
+        length: 5
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+        notes:
+          - Exact RAD 700i payload observed: 27 00 00 00 06. Individual bit meanings are not yet mapped.
+
+  - id: marker-enables-supported-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Read-like request for supported marker-enable bits.
+    minimum_length: 3
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x95":
+            meaning: Marker enables supported request
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: marker-enables-supported-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Supported marker-enable mask returned after request 0x95.
+    minimum_length: 5
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x9B":
+            meaning: Marker enables supported response
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: supported_mask
+        offset: 3
+        length: 2
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+        notes:
+          - Exact RAD 700i payload observed: 0B 00. Individual bit meanings are not yet mapped.
+
+  - id: marker-enables-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Read-like request for current marker-enable state.
+    minimum_length: 3
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x92":
+            meaning: Marker enables request
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: marker-enables-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: Current marker-enable state returned after request 0x92.
+    minimum_length: 5
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0x97":
+            meaning: Marker enables response
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: current_mask
+        offset: 3
+        length: 2
+        type: bytes
+        endianness: null
+        confidence: observed
+        evidence:
+          - drive-smarter-capture-2026-09-11
+        notes:
+          - Exact RAD 700i payload observed: 1B 00. Individual bit meanings are not yet mapped.
+
+  - id: overspeed-limit-data
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Recurring one-byte Drive Smarter update; compatible-family research names 0xAB overspeed-limit data.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: confirmed
+        values:
+          "0xAB":
+            meaning: Overspeed-limit data in compatible-family research
+            confidence: inferred
+            evidence:
+              - esclib-compatible-protocol
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: value
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x00":
+            meaning: Value repeatedly observed in the capture; compatible-family research interprets zero as off
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: unknown-af-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: Zero-payload client request with unknown semantics.
+    minimum_length: 3
+    evidence:
+      - drive-smarter-capture-2026-09-11
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0xAF":
+            meaning: Unknown client request
+            confidence: unknown
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+    notes:
+      - In two sessions this was followed by detector frame F5 02 AB 00.
+
+  - id: unknown-ab-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: observed
+    description: One-byte response repeatedly following the observed 0xAF request; semantics unknown.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-capture-2026-09-11
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0xAB":
+            meaning: Unknown detector response
+            confidence: unknown
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: value
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x00":
+            meaning: Observed response value
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+
+  - id: unknown-d1-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: observed
+    description: One-byte client request observed in separate Drive Smarter sessions; semantics unknown.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-capture-2026-09-11
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0xD1":
+            meaning: Unknown client request
+            confidence: unknown
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+      - name: value
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: observed
+        values:
+          "0x00":
+            meaning: Observed request value
+            confidence: observed
+            evidence:
+              - drive-smarter-capture-2026-09-11
+        evidence:
+          - drive-smarter-capture-2026-09-11
+    notes:
+      - No deterministic application-level response was isolated.
 
   - id: play-tone-request
     transport: ble-main
