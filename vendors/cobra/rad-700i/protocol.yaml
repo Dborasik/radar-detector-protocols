@@ -876,6 +876,15 @@ messages:
       - esclib-compatible-protocol
     test_needed: Capture a physical RAD 700i A9 alert while recording the detector's displayed band, exact frequency, signal strength, and direction if available; repeat across bands and strengths.
 
+  - id: settings-id-map
+    confidence: hypothesis
+    description: Older compatible-family setting IDs/names may overlap portions of the RAD 700i settings surface, but the model-specific Cobra menu differs and must be mapped by physical correlation rather than assumed wholesale.
+    evidence:
+      - drive-smarter-capture-2026-09-11
+      - esclib-compatible-protocol
+      - cobra-rad700i-support
+    test_needed: Query all setting IDs read-only with 0x82, record 0x8A/0x8B responses, compare with current physical menu state, then isolate any ambiguous IDs with one-setting-at-a-time Drive Smarter captures.
+
 hypotheses:
   - id: gps-short-layout
     confidence: hypothesis
@@ -909,6 +918,24 @@ sources:
     commit: a5692f7a0260cc787a0b6cee7db1a908c3255520
     accessed: "2026-09-09"
     notes: Seed source for alert/GPS UUIDs, handles, alert mappings, and candidate GPS parsing.
+
+  - id: cobra-rad700i-support
+    type: vendor-documentation
+    title: Cobra RAD 700i Manual & Support
+    author: Cobra
+    url: https://support.cobra.com/support/solutions/articles/47001286267-cobra-rad700i
+    commit: null
+    accessed: "2026-09-29"
+    notes: Model-specific settings/display/GPS behavior. Does not define protocol setting IDs.
+
+  - id: cobra-detector-configuration
+    type: vendor-documentation
+    title: Configuring Cobra Radar Detectors
+    author: Cobra
+    url: https://support.cobra.com/support/solutions/articles/47001287181-how-should-i-configure-my-cobra-radar-detector-
+    commit: null
+    accessed: "2026-09-29"
+    notes: Confirms RAD 700i Auto sensitivity uses onboard GPS and documents detector-specific band/sensitivity behavior.
 
   - id: cobra-product-page
     type: vendor-documentation
