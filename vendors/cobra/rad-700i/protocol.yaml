@@ -1043,7 +1043,7 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
         notes:
-          - Exact RAD 700i payload observed: 27 00 00 00 06. Individual bit meanings are not yet mapped.
+          - "Exact RAD 700i payload observed: 27 00 00 00 06. Individual bit meanings are not yet mapped."
 
   - id: band-enables-request
     transport: ble-main
@@ -1105,7 +1105,7 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
         notes:
-          - Exact RAD 700i payload observed: 27 00 00 00 06. Individual bit meanings are not yet mapped.
+          - "Exact RAD 700i payload observed: 27 00 00 00 06. Individual bit meanings are not yet mapped."
 
   - id: marker-enables-supported-request
     transport: ble-main
@@ -1167,7 +1167,7 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
         notes:
-          - Exact RAD 700i payload observed: 0B 00. Individual bit meanings are not yet mapped.
+          - "Exact RAD 700i payload observed: 0B 00. Individual bit meanings are not yet mapped."
 
   - id: marker-enables-request
     transport: ble-main
@@ -1229,7 +1229,7 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
         notes:
-          - Exact RAD 700i payload observed: 1B 00. Individual bit meanings are not yet mapped.
+          - "Exact RAD 700i payload observed: 1B 00. Individual bit meanings are not yet mapped."
 
   - id: overspeed-limit-data
     transport: ble-main
