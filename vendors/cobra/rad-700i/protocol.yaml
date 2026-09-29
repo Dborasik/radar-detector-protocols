@@ -902,7 +902,7 @@ hypotheses:
 
 sources:
   - id: max360-serial-research
-    type: public-research
+    type: analysis
     title: Escort Max 360 serial/F5 alert and setting reverse engineering
     author: rbracy19406
     url: https://forum.arduino.cc/t/compare-hex-values-received-via-serial/902323
