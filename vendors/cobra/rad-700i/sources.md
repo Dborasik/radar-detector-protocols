@@ -60,6 +60,18 @@ Cobra RAD 700i official product page: https://www.cobra.com/products/rad700i
 
 Used only for vendor-confirmed product context such as RAD 700i Bluetooth and Drive Smarter support.
 
+## `cobra-rad700i-support`
+
+Cobra RAD 700i support/manual page: https://support.cobra.com/support/solutions/articles/47001286267-cobra-rad700i
+
+Used for model-specific behavior and settings context, including the detector's built-in GPS behavior, posted speed-limit display when connected to Drive Smarter, user-facing sensitivity modes, audio features, and documented menu settings. This source does not assign protocol setting IDs.
+
+## `cobra-detector-configuration`
+
+Cobra detector configuration guide: https://support.cobra.com/support/solutions/articles/47001287181-how-should-i-configure-my-cobra-radar-detector-
+
+Used for model-specific RAD 700i sensitivity/detection behavior and built-in-GPS Auto mode. This is product behavior evidence, not packet-level evidence.
+
 ## Adding sources
 
 Prefer stable permalinks/commit hashes for code. For experiments or captures, add a source entry to `protocol.yaml` and link the corresponding sanitized file under `captures/`.
