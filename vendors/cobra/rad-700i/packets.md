@@ -176,6 +176,21 @@ The researcher reports deriving the fields by sniffing the detector/app traffic 
 
 This is **compatible-family evidence, not yet a RAD 700i field-level confirmation**. It is useful because the RAD 700i protocol already exposes detector-to-client `A9` as the compatible-family front/rear alert-response command ID, whose public tables describe five bytes per alert. The next RAD 700i test should capture an actual alert and correlate the detector's displayed band/frequency/strength with those five bytes before promoting any field semantics.
 
+
+The same public injection table provides candidate lookup structure for two fields:
+
+- **Band byte:** the low five bits fall into four-value groups. In the primary family those groups are reported as X, Ku, K, unknown, Ka, POP, Laser, and Strelka. A second family reports MultaRadar CD, MultaRadar CT, Gatso, VG2, Robot, then unknown groups. Higher bits repeat those families.
+- **Direction/strength byte:** values `0x00-0x1F` are reported as no direction, `0x20-0x3F` front, `0x40-0x5F` rear, and `0x60-0x7F` side. Within each 0x20 block, the public table groups low-five-bit values into five strength levels: `00-06`, `07-0C`, `0D-12`, `13-18`, and `19-1F`. The source does not establish direction/strength semantics for values with bit 7 set.
+
+### Candidate frequency reconstruction
+
+Compatible-family framing says packet data bytes use seven bits. Combining the two reported frequency bytes as `f1 | (f2 << 7)` produces plausible known-band values in published samples:
+
+- an X-band example with bytes `2F 52` produces `10543`, directly in the expected X-band MHz range;
+- a K-band example with bytes `09 3C` produces raw `7689`; adding one 14-bit wrap (`16384`) yields `24073 MHz`.
+
+The toolbox therefore displays the following **hypothesis only** for controlled correlation: X = raw 14-bit value, K = raw + `0x4000`, Ka = raw + `0x8000`. This is not yet a RAD 700i-confirmed frequency formula.
+
 The same thread also documents compatible-family `0x83` setting-change packets. Those writes are intentionally **not** exposed by the toolbox; read-only `0x82` settings discovery is used instead.
 
 
