@@ -829,7 +829,7 @@ messages:
           - drive-smarter-capture-2026-09-11
       - name: setting_value_pairs
         offset: 3
-        length: variable
+        length: 2
         type: bytes
         endianness: null
         confidence: inferred
@@ -837,7 +837,8 @@ messages:
           - drive-smarter-capture-2026-09-11
           - esclib-compatible-protocol
         notes:
-          - Compatible-family research parses the payload as repeated two-byte setting-id/current-value pairs. The RAD 700i capture confirms matching 0x8A traffic but individual setting meanings remain under physical correlation.
+          - Length 2 describes one repeated record: setting ID then current value.
+          - Compatible-family research parses the remaining payload as repeated two-byte records. The RAD 700i capture confirms matching 0x8A traffic but individual setting meanings remain under physical correlation.
 
   - id: settings-information-response
     transport: ble-main
@@ -875,7 +876,7 @@ messages:
           - esclib-compatible-protocol
       - name: supported_values_or_status
         offset: 4
-        length: variable
+        length: 1
         type: bytes
         endianness: null
         confidence: inferred
@@ -883,8 +884,9 @@ messages:
           - drive-smarter-capture-2026-09-11
           - esclib-compatible-protocol
     notes:
+      - Field length 1 describes one payload element; list settings may return multiple one-byte values after the setting ID.
       - Compatible-family research uses a single 0xF4 value after the setting ID to indicate an unsupported setting.
-      - List settings return supported discrete values. Range-setting metadata has not yet been physically characterized on the RAD 700i.
+      - Range-setting metadata is described by compatible-family research as three one-byte values (minimum, maximum, increment), but has not yet been physically characterized on the RAD 700i.
 
   - id: speed-information-request
     transport: ble-main
