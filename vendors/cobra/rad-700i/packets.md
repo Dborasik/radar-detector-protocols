@@ -154,3 +154,18 @@ The same implementation has a fallback for payloads at least 6 bytes long:
 - bytes 4–5: signed LE int16 longitude × `1e-4`
 
 The fallback remains tentative and should not be treated as normative without controlled GPS captures.
+
+
+## Compatible-family A9 alert-record research
+
+A 2021 public reverse-engineering thread for an Escort Max 360 independently reports the same F5/A9 family and a five-byte alert record after command `A9`:
+
+```text
+F5 06 A9 <frequency-1> <frequency-2> <band> <direction-strength> <unknown>
+```
+
+The researcher reports deriving the fields by sniffing the detector/app traffic and injecting values. One example laser frame was `F5 06 A9 00 00 38 5F 20`; another radar example was `F5 06 A9 09 3C 29 3E 00`.
+
+This is **compatible-family evidence, not yet a RAD 700i field-level confirmation**. It is useful because the RAD 700i protocol already exposes detector-to-client `A9` as the compatible-family front/rear alert-response command ID, whose public tables describe five bytes per alert. The next RAD 700i test should capture an actual alert and correlate the detector's displayed band/frequency/strength with those five bytes before promoting any field semantics.
+
+The same thread also documents compatible-family `0x83` setting-change packets. Those writes are intentionally **not** exposed by the toolbox; read-only `0x82` settings discovery is used instead.
