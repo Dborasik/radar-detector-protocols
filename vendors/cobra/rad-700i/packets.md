@@ -109,6 +109,14 @@ For detector-to-client traffic, compatible-family tables identify `0x82` as Aler
 
 The successful tone test does not establish human-readable names for tone selectors. The display-message experiment did not produce a visible result. No firmware/reset/flash/power/lockout/marked-location operation was intentionally tested.
 
+
+
+### Candidate Status-embedded alert tail
+
+Compatible-family `RadarResponse` research documents Status (`0x99`) examples where the first status byte is followed by `0xA9` and additional alert bytes. The RAD 700i has directly produced the one-byte Status payloads `0x03` and `0x0B`, but this repository has not yet captured a longer RAD 700i Status frame during an active alert.
+
+The toolbox therefore retains any Status bytes after the first byte and labels a tail beginning with `0xA9` as a **candidate** embedded front/rear alert record. No field semantics are promoted until a physical RAD 700i active-alert capture confirms the relationship.
+
 ## Radar alert characteristic
 
 Known candidate layout:
