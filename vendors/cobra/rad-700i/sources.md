@@ -41,6 +41,19 @@ Pinned commit: `d7cf1ede44e78c2219e8f12f573024b2915f65c6`
 
 Used as compatible-family corroboration for request/response command names and the BLE challenge/response transforms. The captured RAD 700i `A3 -> A2` and `A1 -> A4` pairs match the documented transforms exactly. This source is not used to promote unobserved RAD 700i commands by itself.
 
+## `roadsage-compatible-protocol`
+
+Repository: https://github.com/koiosdigital/RoadSage  
+Pinned commit: `6624f44ea38fcc47cbdadf3c58f942729edb13f3`
+
+RoadSage independently carries the compatible-family B5E22DE9/DEA/DEB BLE UUIDs, the F5 command table, speed-limit writes, tone writes, and a five-byte `DISPLAY_LOCATION (0xAD)` packer. The location packer combines alert type, distance, heading, age, and a database flag into seven-bit-safe fields. This is valuable candidate research for future RAD 700i community/location alert work, but it is not promoted as RAD 700i behavior without a physical capture.
+
+## `adwatch-cobra-fingerprint`
+
+Documentation: https://github.com/bensmith83/adwatch/blob/7f35567eec5d2508a946484ea664881e6f98c8fb/docs/protocols/cobra.md
+
+Adwatch independently identifies Cobra RAD/SC products using primary service UUID `2A668FA4-2902-4468-8568-3EBE69A930A0` plus model-name heuristics. This supports the broader Cobra-family BLE fingerprint but does not provide packet-level RAD 700i semantics.
+
 ## `max360-serial-research`
 
 Public reverse-engineering discussion: https://forum.arduino.cc/t/compare-hex-values-received-via-serial/902323
