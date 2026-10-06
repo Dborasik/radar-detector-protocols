@@ -8,4 +8,4 @@ protocols:
     transports:
       - bluetooth-le
     coverage: partial
-    last_updated: "2026-10-05"
+    last_updated: "2026-10-06"
