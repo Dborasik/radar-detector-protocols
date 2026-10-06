@@ -18,6 +18,19 @@ APK components and SHA-256:
 
 These hashes identify the exact publicly distributed Android build used for static protocol research. The APKs and decompiled application source are **not** committed to this repository. Any protocol findings derived from inspection must be documented as behavior/structure, with independent physical-capture validation where possible, rather than copying proprietary implementation code.
 
+### Static-analysis findings from Drive Smarter 4.12.0.0
+
+JADX output for the exact build above contains a Bluetooth UUID model class under the app's bundled `smartsight.core.bt` code. Its symbolic names distinguish:
+
+- Cobra/iRadar primary service `2A668FA4-2902-4468-8568-3EBE69A930A0`;
+- Escort-family service `B5E22DE9-31EE-42AB-BE6A-9BE0837AA344`;
+- Escort-family live TX characteristic `B5E22DEA-31EE-42AB-BE6A-9BE0837AA344`;
+- Escort-family live RX characteristic `B5E22DEB-31EE-42AB-BE6A-9BE0837AA344`.
+
+This is static-analysis corroboration for the UUIDs already observed/corroborated elsewhere; it does not replace physical RAD 700i capture evidence.
+
+The same decompilation exposes typed radar-domain symbols including `RadarMarkerEnable.Type`. It also reveals references to a radar protocol constants class whose surviving symbolic field names include `RADAR_OPTIONS_INFO_RESPONSE`, `REPORT_BUTTON_PRESS`, `UNLOCK_RESPONSE`, `MODEL_INFO_RESPONSE`, and `BAND_ENABLES_RESPONSE`. Numeric mappings from that class have not yet been extracted, so these names are recorded as research leads rather than promoted protocol facts.
+
 
 ## `drive-smarter-capture-2026-09-11`
 
