@@ -1,7 +1,7 @@
 schema_version: "1.0"
 protocols:
   - id: cobra.rad-700i
-    contract_revision: 5
+    contract_revision: 6
     vendor: Cobra
     model: RAD 700i
     path: vendors/cobra/rad-700i/protocol.yaml
