@@ -103,7 +103,7 @@ detector -> client  F5 03 97 1B 00
 
 Compatible-family tables name these as settings request, band-enables supported/current requests and responses, and marker-enables supported/current requests and responses. The byte exchanges above are directly observed on the RAD 700i; the semantic names are corroborated by compatible-family research.
 
-The capture also contains two still-unknown client requests:
+The capture also contains:
 
 ```text
 client -> detector  F5 01 AF
@@ -112,7 +112,7 @@ detector -> client  F5 02 AB 00
 client -> detector  F5 02 D1 00
 ```
 
-`AF -> AB 00` repeats in separate sessions and is therefore recorded as an observed request/response pair with unknown semantics. No deterministic application-level response to `D1 00` was isolated.
+Subsequent static analysis of the exact Drive Smarter 4.12.0.0 build resolves the first packet as the app's zero-payload radar enable/disable **support query**, paired with `RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE (0xAB)`. It resolves `D1 00` as `getRadarOptions(RadarOption.ALL)`; the physical payload establishes `ALL = 0x00` for this build. No deterministic `AC` response was isolated from the sanitized baseline capture, so response contents remain raw.
 
 ### Exact read-only setting discovery observed
 
@@ -138,7 +138,7 @@ Drive Smarter queried these setting IDs with `F5 02 82 <id>`. For each listed ID
 | `2B` | `2B 00 01` | `00` |
 | `2C` | `2C 00 01` | `01` |
 
-The table above is direct RAD 700i wire evidence. It does **not** assign user-facing setting names to IDs. Older compatible-family research provides candidate names for some low IDs, but the RAD 700i uses additional IDs above `0x1B` and different value sets, so one-setting-at-a-time physical correlation remains required.
+The table above is direct RAD 700i wire evidence. Later Drive Smarter 4.12 static analysis resolves the current-app symbolic names for these observed IDs: `01 Sensitivity`, `02 Brightness`, `07 AutoMute`, `0A Voice`, `0E Units`, `10 AutoLearn`, `13 Cruise alert`, `14 Over speed alert`, `15 Language`, `16 Display color`, `24 Detail`, `25 Screen saver`, `26 Smart power`, `28 Low voltage alert`, `29 Quiet drive`, `2B K low band enable`, and `2C Caution area`. That names the request IDs; detector-returned value semantics still require physical correlation where not independently established.
 
 For IDs `13` and `14`, the three information bytes `14 A0 05` match the compatible-family range convention of minimum `20`, maximum `160`, increment `5`. That interpretation remains corroborated/inferred until the RAD 700i UI setting is isolated.
 
