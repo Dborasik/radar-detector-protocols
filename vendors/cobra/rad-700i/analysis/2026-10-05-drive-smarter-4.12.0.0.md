@@ -73,9 +73,76 @@ The parser treats Status as an object derived from the first payload byte. It ex
 
 ## Request enum evidence
 
-The same build contains a typed `RadarRequest` enum with symbolic requests for settings information/change/request, band enables, version/model/status/GPS/display queries, display location/clear, mute, authentication, speed limit/current speed/overspeed data, radar enable/disable, radar options, and turn-by-turn operations.
+The same build contains a typed `RadarRequest` enum. The request-command portion of that enum maps to:
 
-Only request values independently extracted or physically observed should be promoted into the RAD 700i contract. The enum's complete numeric request map is the next static-analysis target.
+| Wire value | Application symbol |
+|---:|---|
+| `0x80` | LOCK_REQUEST |
+| `0x81` | UNLOCK_REQUEST |
+| `0x82` | SETTINGS_INFORMATION |
+| `0x83` | SETTING_CHANGE |
+| `0x84` | SETTINGS_REQUEST |
+| `0x85` | BAND_ENABLES_SET |
+| `0x86` | BAND_ENABLES_REQUEST |
+| `0x89` | VERSION_REQUEST |
+| `0x8C` | BAND_ENABLES_SUPPORTED |
+| `0x91` | MODEL_INFO_REQUEST |
+| `0x92` | MARKER_ENABLES_REQUEST |
+| `0x93` | MARKER_ENABLES_SET |
+| `0x94` | STATUS_REQUEST |
+| `0x95` | MARKER_ENABLES_SUPPORTED |
+| `0x97` | GPS_EQUIPPED_REQUEST |
+| `0x99` | DISPLAY_LENGTH |
+| `0x9D` | MODEL_NUMBER_RESPONSE |
+| `0x9E` | MUTE |
+| `0xA1` | UPDATE_APPROVAL_RESPONSE |
+| `0xA3` | BLUETOOTH_PROTOCOL_UNLOCK_REQUEST |
+| `0xA4` | BLUETOOTH_PROTOCOL_UNLOCK_RESPONSE |
+| `0xA5` | BLUETOOTH_PROTOCOL_UNLOCK_STATUS |
+| `0xA9` | SPEED_LIMIT_UPDATE |
+| `0xAA` | ACTUAL_SPEED_UPDATE |
+| `0xAB` | OVERSPEED_LIMIT_DATA |
+| `0xAC` | DISPLAY_CAPABILITIES |
+| `0xAD` | DISPLAY_LOCATION |
+| `0xAE` | DISPLAY_CLEAR_LOCATION |
+| `0xAF` | DISABLE_ENABLE_RADAR |
+| `0xD0` | RADAR_OPTIONS_SET |
+| `0xD1` | RADAR_OPTIONS_REQUEST |
+| `0xD3` | RADAR_OPTIONS_INFORMATION |
+
+The enum also contains turn-by-turn request/subfield values. Those later enum entries reuse small integers for maneuver, modifier, and unit values and must not all be interpreted as top-level radar request opcodes.
+
+Two static-analysis results directly resolve previously unknown physical RAD 700i capture traffic:
+
+- observed client `F5 01 AF` corresponds to Drive Smarter symbol `DISABLE_ENABLE_RADAR`; the paired detector `F5 02 AB 00` is named `RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE`. The exact zero-payload AF operation is not replayed by the toolbox because the symbol alone does not prove whether it is a capability query or a state transition.
+- observed client `F5 02 D1 00` corresponds to `RADAR_OPTIONS_REQUEST`. Payload semantics and response association still need reduction before replay.
+
+Notably, the current Drive Smarter request enum does **not** contain the older compatible-family arbitrary `DISPLAY_MESSAGE (0x9A)` or `PLAY_TONE (0x9B)` request symbols. The physical RAD 700i still responds audibly to tested `0x9B` selectors, but these operations appear to be legacy/family behavior rather than current Drive Smarter 4.12 request-enum features.
+
+## Alert parser structure
+
+Current Drive Smarter statically confirms two distinct record widths:
+
+- `ALERT_RESPONSE (0x82)`: payload is divided into 4-byte alert records.
+- `ALERT_RESPONSE_FRONT_REAR (0xA9)`: payload is divided into 5-byte alert records.
+
+For each record, Drive Smarter constructs the same alert-domain object using a four-argument or five-argument constructor respectively. The parser applies alert-type/strength filtering before retaining an alert. Exact meanings of the constructor fields are the next static-analysis target.
+
+This moves the **record widths** from older compatible-family hypothesis to current Drive Smarter application evidence. It does not yet prove that an active RAD 700i uses the A9 form or establish exact band/frequency/direction/strength field semantics.
+
+## Other parser constraints
+
+The current parser also establishes:
+
+- band-enable current/supported responses are accepted only at total F5 frame lengths 8 or 9 bytes;
+- marker-enable current/supported responses are accepted only at total frame length 5 bytes;
+- `DISPLAY_CAPABILITIES_RESPONSE (0xA8)`, `GPS_EQUIPPED_RESPONSE (0x81)`, and `SPEED_INFORMATION_REQUEST (0xA6)` carry one payload byte in the accepted form;
+- `BLUETOOTH_PROTOCOL_UNLOCK_REQUEST/RESPONSE` use total frame length 13, matching command plus 10-byte challenge/response;
+- `BLUETOOTH_SERIAL_NUMBER_RESPONSE (0xA5)` uses total frame length 11 and decodes its payload as UTF-8;
+- `STATUS_RESPONSE (0x99)` is accepted at length >=4, but Drive Smarter 4.12 constructs its status object from only the first payload byte;
+- model-info type byte `0x03` maps to `COBRA`, which agrees with the captured physical RAD 700i model response beginning with `03`.
+
+The fact that Drive Smarter 4.12 ignores Status bytes after the first weakens the relevance of older compatible-family "Status-embedded A9 alert tail" behavior for this app version. Longer tails should still be preserved as raw data if encountered, but not preferentially decoded as alerts without physical evidence.
 
 ## Evidence discipline
 
