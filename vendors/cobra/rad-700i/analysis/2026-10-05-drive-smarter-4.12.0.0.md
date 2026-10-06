@@ -69,7 +69,7 @@ This table is strong evidence for the protocol family implemented by Drive Smart
 
 The application's response parser has explicit branches for both `ALERT_RESPONSE (0x82)` and `ALERT_RESPONSE_FRONT_REAR (0xA9)`, and constructs collections for both alert forms. It separately parses band direction, settings, band masks, marker masks, status, speed-information requests, overspeed requests, display capabilities, authentication messages, radar-options messages, and other response families.
 
-The parser treats Status as an object derived from the first payload byte. It expects a one-byte payload for speed-information requests and a one-byte payload for display-capabilities responses. The alert field-level decoding still needs to be reduced into protocol documentation; do not infer the exact RAD 700i alert layout merely from the existence of these parser branches.
+The parser treats Status as an object derived from the first payload byte. It expects a one-byte payload for speed-information requests and a one-byte payload for display-capabilities responses. The alert-domain object and parser loop have now also been reduced below, including field extraction and the application's first-qualifying-record selection behavior.
 
 ## Request enum evidence
 
@@ -114,8 +114,8 @@ The enum also contains turn-by-turn request/subfield values. Those later enum en
 
 Two static-analysis results directly resolve previously unknown physical RAD 700i capture traffic:
 
-- observed client `F5 01 AF` corresponds to Drive Smarter symbol `DISABLE_ENABLE_RADAR`; the paired detector `F5 02 AB 00` is named `RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE`. The exact zero-payload AF operation is not replayed by the toolbox because the symbol alone does not prove whether it is a capability query or a state transition.
-- observed client `F5 02 D1 00` corresponds to `RADAR_OPTIONS_REQUEST`. Payload semantics and response association still need reduction before replay.
+- observed client `F5 01 AF` is the exact packet stored by the app's `RADAR_ENABLE_DISABLE_REQUEST` detector-query entry. The paired detector `F5 02 AB 00` is parsed as `RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE` with one value byte. This resolves the observed zero-payload AF form as a read/support query. Payload-bearing or state-changing AF variants are not inferred.
+- observed client `F5 02 D1 00` is emitted by the app's `getRadarOptions` path as `RADAR_OPTIONS_REQUEST` plus `RadarOption.ALL`. The physical payload byte therefore establishes `ALL = 0x00` for this build. The exact `D1 00` form is read-like; `D0 RADAR_OPTIONS_SET` remains state-changing and blocked.
 
 Notably, the current Drive Smarter request enum does **not** contain the older compatible-family arbitrary `DISPLAY_MESSAGE (0x9A)` or `PLAY_TONE (0x9B)` request symbols. The physical RAD 700i still responds audibly to tested `0x9B` selectors, but these operations appear to be legacy/family behavior rather than current Drive Smarter 4.12 request-enum features.
 
@@ -201,6 +201,79 @@ lockedOut = (b2 & 0x20) == 0
 then forces `lockedOut = false` for Ka and POP.
 
 These are current-application decoding semantics, not merely compatible-family guesses. A physical RAD 700i active-alert capture is still needed to establish which of the current app's alert forms/fields this specific firmware emits in practice.
+
+The parser loop adds at most one alert to the collection it returns to the rest of the application. In order, it:
+
+1. skips SWS records (`band == 3`);
+2. accepts Laser even without an ordinary frequency;
+3. accepts other decoded bands only when `frequency > 0`; and
+4. stops after the first qualifying record.
+
+This is application presentation behavior, not a reason to discard later raw records during protocol research. The toolbox therefore preserves every complete raw record and separately exposes the subset Drive Smarter itself would surface.
+
+## Current setting-ID map
+
+Drive Smarter's current `RadarSetting.Type` enum, its `getReqvalue()` keyed handler table, the established low-ID family mapping, and the physically observed RAD 700i IDs align on the one-based request-value sequence below. This resolves the current-app symbolic name for the observed high IDs without claiming that every candidate value label has been physically correlated.
+
+| ID | Drive Smarter setting |
+|---:|---|
+| `01` | Sensitivity |
+| `02` | Brightness |
+| `03` | Dark mode |
+| `04` | Pilot mode |
+| `05` | Power-on sequence |
+| `06` | Meter mode |
+| `07` | AutoMute |
+| `08` | Audio tones |
+| `09` | ZR3 / shifter mode |
+| `0A` | Voice |
+| `0B` | Speed alert |
+| `0C` | Auto volume |
+| `0D` | Auto power |
+| `0E` | Units |
+| `0F` | GPS filter |
+| `10` | AutoLearn |
+| `11` | Alert lamp |
+| `12` | Display orientation |
+| `13` | Cruise alert |
+| `14` | Over speed alert |
+| `15` | Language |
+| `16` | Display color |
+| `17` | Speed on display |
+| `18` | Speaker volume |
+| `19` | Headset volume |
+| `1A` | User mode |
+| `1B` | Arrow mode |
+| `1C` | Over speed limit alert |
+| `1D` | Bluetooth enable |
+| `1E` | Wi-Fi enable |
+| `1F` | Auto update |
+| `20` | Scanning bar |
+| `21` | Frequency |
+| `22` | Alert ring |
+| `23` | Interface mode |
+| `24` | Detail |
+| `25` | Screen saver |
+| `26` | Smart power |
+| `27` | Vehicle voltage display |
+| `28` | Low voltage alert |
+| `29` | Quiet drive |
+| `2A` | K notch filter |
+| `2B` | K low band enable |
+| `2C` | Caution area |
+
+The physical capture directly queried IDs `01 02 07 0A 0E 10 13 14 15 16 24 25 26 28 29 2B 2C`. The names above are current-app static semantics; the detector-returned `8A/8B` values remain raw where their user-facing value meanings have not been isolated.
+
+## Radar-options and radar-support query construction
+
+Current Drive Smarter code constructs these packets:
+
+- `getRadarOptions`: `F5 02 D1 <RadarOption.ALL>`; the physical capture is `F5 02 D1 00`, establishing `ALL = 0x00` for this build.
+- `radarOptionSet`: `F5 03 D0 <option> <value>`; this is state-changing.
+- `getRadarOptionInfo`: `F5 02 D3 <option>`; this is read-like in code, but individual option IDs were not needed for the observed RAD 700i capture and are not guessed here.
+- detector support query: exact zero-payload `F5 01 AF`, represented by the app's detector request table and paired physically with `F5 02 AB 00`.
+
+The app's generic radar-option filter enum contains `OFF=0`, `ON=1`, `LOW=2`, `MEDIUM=3`, and `HIGH=4`; those values must not be assigned to a specific radar option without the relevant option mapping.
 
 ## Band-enable bitfield model
 
