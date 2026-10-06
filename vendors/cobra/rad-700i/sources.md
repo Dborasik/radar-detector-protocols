@@ -29,7 +29,9 @@ JADX output for the exact build above contains a Bluetooth UUID model class unde
 
 This is static-analysis corroboration for the UUIDs already observed/corroborated elsewhere; it does not replace physical RAD 700i capture evidence.
 
-The same decompilation exposes typed radar-domain symbols including `RadarMarkerEnable.Type`. A centralized response-code class preserves symbolic names and numeric byte values for the current Drive Smarter protocol family, including `ALERT_RESPONSE (0x82)`, `ALERT_RESPONSE_FRONT_REAR (0xA9)`, `BAND_DIRECTION_RESPONSE (0xAA)`, settings/band/marker/status responses, Bluetooth unlock messages, radar-options responses, and `UNSUPPORTED_REQUEST (0xF0)`. A sanitized derived table is recorded in [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md). These application-wide symbols do not by themselves prove that every command is supported by the RAD 700i.
+The same decompilation exposes typed radar-domain symbols including `RadarMarkerEnable.Type`. A centralized response-code class preserves symbolic names and numeric byte values for the current Drive Smarter protocol family, including `ALERT_RESPONSE (0x82)`, `ALERT_RESPONSE_FRONT_REAR (0xA9)`, `BAND_DIRECTION_RESPONSE (0xAA)`, settings/band/marker/status responses, Bluetooth unlock messages, radar-options responses, and `UNSUPPORTED_REQUEST (0xF0)`.
+
+The current alert-domain object was also reduced far enough to derive the application's exact 4-byte/5-byte alert-record bit extraction for band ID, frequency integer, front/rear signal strength, numeric direction, Laser subtype, and lockout state. The current band-enable model provides byte-index/mask mappings for X/K/Ka/Laser and the extended regional band options. These derived semantics are recorded in [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md). They are current-application evidence; commands or alert forms are only promoted to RAD 700i-observed status when backed by physical capture/experiment evidence.
 
 
 ## `drive-smarter-capture-2026-09-11`
