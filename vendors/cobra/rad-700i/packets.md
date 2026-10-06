@@ -266,3 +266,29 @@ Static inspection of the exact hashed Android build documented in `sources.md` r
 The app's parser has explicit branches for `0x82` and `0xA9` that produce alert collections. This materially strengthens the conclusion that these are two distinct alert response forms in the current Drive Smarter protocol family. It still does not establish the RAD 700i field-level A9 payload semantics; physical correlation or further static parser reduction is required.
 
 See [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md) for the full derived response table and provenance.
+
+
+### Current Drive Smarter request enum
+
+Static analysis of Drive Smarter 4.12.0.0 now provides the exact current request-command symbols for the major radar protocol operations. Of particular relevance to the RAD 700i capture:
+
+- `0xAF = DISABLE_ENABLE_RADAR` in the application enum; this names the previously unknown observed `F5 01 AF` request, but the zero-payload operation remains blocked because its exact side effect/query semantics are not proven.
+- `0xD1 = RADAR_OPTIONS_REQUEST`; this names the previously unknown observed `F5 02 D1 00` request. Payload/response semantics remain unresolved.
+- `0xAD = DISPLAY_LOCATION` and `0xAE = DISPLAY_CLEAR_LOCATION`, strengthening the current-app relevance of location/community display research.
+- `0xD0 = RADAR_OPTIONS_SET` and `0xD3 = RADAR_OPTIONS_INFORMATION`.
+- the current enum does not expose the older compatible-family arbitrary `DISPLAY_MESSAGE 0x9A` or `PLAY_TONE 0x9B` request symbols.
+
+No new state-changing request is enabled in the toolbox from static analysis alone.
+
+### Current Drive Smarter alert record widths
+
+Drive Smarter 4.12.0.0 parses:
+
+- detector `0x82 ALERT_RESPONSE` as zero or more **4-byte records**;
+- detector `0xA9 ALERT_RESPONSE_FRONT_REAR` as zero or more **5-byte records**.
+
+This confirms the record widths in the current application family. Exact field semantics still require reduction of the alert-domain object class and, for RAD 700i-specific claims, physical correlation.
+
+### Status parser note
+
+Drive Smarter 4.12.0.0 accepts Status frames with at least one payload byte but constructs its status object from only the first payload byte. Older compatible-family research describing an embedded A9 tail is therefore retained only as historical/family evidence, not as preferred current-app behavior.
