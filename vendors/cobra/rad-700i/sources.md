@@ -15,14 +15,14 @@ APK components and SHA-256:
 | `base.apk` | `6951b46b91c875a5fdb295839c1e21459728a98eb235f70cadc5651d444e6395` |
 | `split_config.arm64_v8a.apk` | `111cc0aeb153ec6453e4364f043813018ded1d86c06e3b1daf894889417ef2bf` |
 
-| \`split_config.xxhdpi.apk\` | \`3ac70be349b239a34a6d9a2b39b651a8a022b427ec0349614a883d18e8aff8d4\` |
+| `split_config.xxhdpi.apk` | `3ac70be349b239a34a6d9a2b39b651a8a022b427ec0349614a883d18e8aff8d4` |
 
 Additional local analysis bundles used to reproduce this pass (not committed):
 
 | Analysis artifact | SHA-256 |
 |---|---|
-| \`drive-smarter-jadx.zip\` | \`f87e8c3c777e03f10ed7e50a1d9c216452be1684125b3719f38672f1aad3f83b\` |
-| \`radar-protocol-inspection.zip\` | \`099c3d72d1bc85b469b0f1d4b690d126d9180d627084a5c7648f2a31efccc799\` |
+| `drive-smarter-jadx.zip` | `f87e8c3c777e03f10ed7e50a1d9c216452be1684125b3719f38672f1aad3f83b` |
+| `radar-protocol-inspection.zip` | `099c3d72d1bc85b469b0f1d4b690d126d9180d627084a5c7648f2a31efccc799` |
 
 These hashes identify the exact publicly distributed Android build used for static protocol research. The APKs and decompiled application source are **not** committed to this repository. Any protocol findings derived from inspection must be documented as behavior/structure, with independent physical-capture validation where possible, rather than copying proprietary implementation code.
 
@@ -44,17 +44,17 @@ The current alert-domain object was also reduced far enough to derive the applic
 A deeper pass over the same exact build additionally establishes:
 
 - the exact two-byte marker-enable bit map;
-- radar-option IDs \`0..6\`, filter values \`0..4\`, \`0xAC\` repeated option/value parsing, and \`0xAE\` LIST/NUMBER metadata parsing;
-- exact current-app \`DISPLAY_LOCATION (0xAD)\` five-byte packing and zero-payload \`DISPLAY_CLEAR_LOCATION (0xAE)\`;
-- the app's separate Cedar turn-by-turn BLE UUID family and \`AA 55 ... BB 66\` message envelope;
+- radar-option IDs `0..6`, filter values `0..4`, `0xAC` repeated option/value parsing, and `0xAE` LIST/NUMBER metadata parsing;
+- exact current-app `DISPLAY_LOCATION (0xAD)` five-byte packing and zero-payload `DISPLAY_CLEAR_LOCATION (0xAE)`;
+- the app's separate Cedar turn-by-turn BLE UUID family and `AA 55 ... BB 66` message envelope;
 - exact current-app maneuver/modifier/unit code tables and maneuver-frame construction.
 
-These derived semantics are recorded in [\`analysis/2026-10-05-drive-smarter-4.12.0.0.md\`](analysis/2026-10-05-drive-smarter-4.12.0.0.md). They are current-application evidence; commands or alert forms are only promoted to RAD 700i-observed status when backed by physical capture/experiment evidence.
+These derived semantics are recorded in [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md). They are current-application evidence; commands or alert forms are only promoted to RAD 700i-observed status when backed by physical capture/experiment evidence.
 
 
 ### Negative/static search result: GPS FE51 UUID
 
-The exact Drive Smarter 4.12 managed source/resources, base-APK DEX string content, and supplied ARM64 native split were searched for \`0000FE51-8E22-4541-9D4C-21EDAE82ED19\` / \`FE51\`; no literal was found. This does **not** prove the independent GPS endpoint report is wrong, but it prevents treating this Drive Smarter build as corroboration for that UUID. The GPS endpoint/layout remains separately confidence-scoped to the public implementation until a controlled physical capture confirms it.
+The exact Drive Smarter 4.12 managed source/resources, base-APK DEX string content, and supplied ARM64 native split were searched for `0000FE51-8E22-4541-9D4C-21EDAE82ED19` / `FE51`; no literal was found. This does **not** prove the independent GPS endpoint report is wrong, but it prevents treating this Drive Smarter build as corroboration for that UUID. The GPS endpoint/layout remains separately confidence-scoped to the public implementation until a controlled physical capture confirms it.
 
 ## `drive-smarter-capture-2026-09-11`
 
