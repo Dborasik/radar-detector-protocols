@@ -27,14 +27,28 @@ Drive Smarter transmitted F5-framed authentication, status/query, settings-sync,
 
 The 2026-09-11 capture confirms that this characteristic carries framed protocol responses/challenges in addition to the alert stream documented by the initial public implementation.
 
-## GPS characteristic
+## GPS characteristic reported by the seed implementation
 
 - UUID: `0000fe51-8e22-4541-9d4c-21edae82ed19`
 - Reported properties: `read`, `notify`
-- Observed handle: `0x000e`
-- Characteristic existence/properties confidence: `observed`
+- Reported handle: `0x000e`
+- Endpoint evidence: independent public RAD 700i implementation
 - Payload interpretation confidence: `hypothesis`
+
+This UUID/handle is **not** promoted from the 2026-09-11 Drive Smarter HCI capture. A search of the exact Drive Smarter 4.12 managed decompilation, base APK DEX strings, and supplied ARM64 native split found no `FE51` UUID literal. That absence does not disprove the endpoint, but it means the current Drive Smarter build is not additional evidence for it.
+
+## Drive Smarter turn-by-turn service — static application evidence
+
+The exact Drive Smarter 4.12 build declares a separate Cedar turn-by-turn UUID family:
+
+- service: `52affc3a-6424-11ec-90d6-0242ac120003`
+- TX: `b5e22dfb-31ee-42ab-be6a-9be0837aa344`
+- RX: `b5e22dfc-31ee-42ab-be6a-9be0837aa344`
+- Confidence for **application support:** `inferred`
+- Confidence for **RAD 700i physical availability:** `unknown`
+
+The app groups all three UUIDs into its turn-by-turn UUID list and contains packet construction/parsing for that transport. These UUIDs have not yet been confirmed in a sanitized physical RAD 700i GATT enumeration, so they are not part of the model's confirmed BLE surface.
 
 ## Still-needed GATT work
 
-Useful future contributions include a complete sanitized enumeration containing advertisement data, descriptors/CCCDs, handles across firmware versions, and whether bonding/pairing behavior changes between Android/iOS/desktop clients.
+Highest-value next step is a complete sanitized RAD 700i enumeration that explicitly checks for the turn-by-turn service/TX/RX UUIDs above. Additional useful data includes advertisement fields, descriptors/CCCDs, handles across firmware versions, and whether bonding/pairing behavior changes between Android/iOS/desktop clients.
