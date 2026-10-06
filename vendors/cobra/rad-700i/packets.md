@@ -255,7 +255,9 @@ The tested RAD 700i was queried with `0x82` for:
 
 IDs `24–2C` extend beyond the older public compatible-family table, but the current Drive Smarter 4.12 `RadarSetting.Type` sequence resolves the symbolic names used by this app build. For the physically queried high IDs: `24 Detail`, `25 Screen saver`, `26 Smart power`, `28 Low voltage alert`, `29 Quiet drive`, `2B K low band enable`, and `2C Caution area`. The toolbox remains restricted to IDs physically queried on the RAD 700i.
 
-Exact `8B` metadata/current `8A` values are preserved in the sanitized capture summary. IDs `13 Cruise alert` and `14 Over speed alert` returned `14 A0 05`, matching the family convention for a numeric range of 20–160 in steps of 5. The setting names are current-app static evidence; individual value labels remain separately confidence-scoped.
+Exact `8B` metadata/current `8A` values are preserved in the sanitized capture summary. The current Drive Smarter 4.12 resource tables and parser now also resolve most of the returned list values: for example Brightness `00/01/02/03 = Full dark/Minimum/Medium/Maximum`, Units `00/01 = Imperial/Metric`, Detail `00/01 = Less/More`, and Screen Saver `00/01/03 = Off/1 Minute/3 Minute`. Display Color's physical supported sequence `07 02 03 01 06` maps to White, Green, Blue, Red, Yellow. The high-ID toggles Smart Power, Low Voltage Alert, Quiet Drive, K Low Band Enable, and Caution Area use Off/On labels in the current app.
+
+IDs `13 Cruise alert` and `14 Over speed alert` returned `14 A0 05`; the current parser explicitly builds Off plus a numeric range of 20–160 in steps of 5. One anomaly remains intentionally unresolved: Sensitivity returned supported bytes `00 07 08 09 10` and current value `10`. The current app label table maps 0=Auto, 7=Low, 8=Medium, and 9=High, but has no index 16 (`0x10`), so the detector's `0x10` value is not assigned a guessed name.
 
 ### Safety consequence
 
