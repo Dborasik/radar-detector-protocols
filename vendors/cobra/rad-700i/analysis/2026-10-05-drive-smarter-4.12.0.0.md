@@ -119,16 +119,121 @@ Two static-analysis results directly resolve previously unknown physical RAD 700
 
 Notably, the current Drive Smarter request enum does **not** contain the older compatible-family arbitrary `DISPLAY_MESSAGE (0x9A)` or `PLAY_TONE (0x9B)` request symbols. The physical RAD 700i still responds audibly to tested `0x9B` selectors, but these operations appear to be legacy/family behavior rather than current Drive Smarter 4.12 request-enum features.
 
-## Alert parser structure
+## Alert record decoding
 
-Current Drive Smarter statically confirms two distinct record widths:
+Static inspection of the alert-domain object resolves the field extraction used by current Drive Smarter 4.12.0.0.
 
-- `ALERT_RESPONSE (0x82)`: payload is divided into 4-byte alert records.
-- `ALERT_RESPONSE_FRONT_REAR (0xA9)`: payload is divided into 5-byte alert records.
+The response parser still establishes the two record widths:
 
-For each record, Drive Smarter constructs the same alert-domain object using a four-argument or five-argument constructor respectively. The parser applies alert-type/strength filtering before retaining an alert. Exact meanings of the constructor fields are the next static-analysis target.
+- `ALERT_RESPONSE (0x82)`: zero or more 4-byte records.
+- `ALERT_RESPONSE_FRONT_REAR (0xA9)`: zero or more 5-byte records.
 
-This moves the **record widths** from older compatible-family hypothesis to current Drive Smarter application evidence. It does not yet prove that an active RAD 700i uses the A9 form or establish exact band/frequency/direction/strength field semantics.
+For a record `b0 b1 b2 b3 [b4]`, Drive Smarter derives the band as:
+
+```text
+band = (b2 & 0x1C) >> 2
+if (b2 & 0x40) != 0:
+    band |= 0x08
+```
+
+The application constants map those band IDs as:
+
+| Band ID | Application meaning |
+|---:|---|
+| 0 | X |
+| 1 | Ku |
+| 2 | K |
+| 3 | SWS |
+| 4 | Ka |
+| 5 | POP |
+| 6 | Laser |
+| 7 | Strelka |
+| 8 | MultaRadar CD |
+| 9 | MultaRadar CT |
+| 10 | Gatso |
+| 11 | VG2 |
+| 12 | Robot |
+
+For X, Ku, K, Ka, POP, Strelka, MultaRadar CD, MultaRadar CT, Gatso, VG2, and Robot, Drive Smarter reconstructs the integer `frequency` as:
+
+```text
+frequency =
+    (b0 & 0x7F)
+  | ((b1 & 0x7F) << 7)
+  | ((b2 & 0x03) << 14)
+```
+
+This replaces the older compatible-family "14-bit value plus band-specific wrap" hypothesis: the two high frequency bits are carried directly in bits 0–1 of `b2`. The application names the resulting integer `frequency`; unit interpretation should remain separately documented until model-level correlation is available.
+
+For the 4-byte `0x82` record:
+
+```text
+front_signal_strength = b3 & 0x1F
+signal_direction = 7  # application constant NO_ARROW_SUPPORTED
+```
+
+For the 5-byte `0xA9` record:
+
+```text
+front_signal_strength = b3 & 0x1F
+rear_signal_strength  = b4 & 0x1F
+signal_direction =
+    (((b4 & 0x20) >> 5) << 2)
+  + ((b3 & 0x60) >> 5)
+```
+
+The exact human-readable meaning of direction codes other than application constant `7 = NO_ARROW_SUPPORTED` has not yet been extracted, so numeric direction values are preferable to guessed front/rear/side labels.
+
+For Laser (`band == 6`), Drive Smarter instead records:
+
+```text
+laser_type = b0 & 0x07
+```
+
+and does not populate the ordinary frequency/strength fields in this alert object path. SWS (`band == 3`) likewise does not enter the normal frequency branch.
+
+The application also derives a `lockedOut` flag from `b2`:
+
+```text
+lockedOut = (b2 & 0x20) == 0
+```
+
+then forces `lockedOut = false` for Ka and POP.
+
+These are current-application decoding semantics, not merely compatible-family guesses. A physical RAD 700i active-alert capture is still needed to establish which of the current app's alert forms/fields this specific firmware emits in practice.
+
+## Band-enable bitfield model
+
+Drive Smarter 4.12.0.0 also exposes its band-enable model as byte-index/mask pairs:
+
+| Option | Byte index | Mask |
+|---|---:|---:|
+| Ku | 0 | `0x40` |
+| Laser | 0 | `0x20` |
+| SWS | 0 | `0x10` |
+| POP | 0 | `0x08` |
+| X Band | 0 | `0x01` |
+| K Pulse | 1 | `0x10` |
+| Shifter Mode | 1 | `0x0C` |
+| TSR | 1 | `0x02` |
+| RDR | 1 | `0x01` |
+| Ka Band Superwide | 0 | `0x04` |
+| Ka Band | 1 | `0x60` |
+| Ka Narrow 1–7 | 2 | `0x01,02,04,08,10,20,40` |
+| Ka Narrow 8–10 | 3 | `0x01,02,04` |
+| K Band | 0 | `0x02` |
+| K Narrow 1–4 | 3 | `0x08,10,20,40` |
+| Strelka | 4 | `0x01` |
+| MultaRadar CD | 4 | `0x02` |
+| MultaRadar CT | 4 | `0x04` |
+| Gatso | 4 | `0x08` |
+| Mesta 210c | 5 | `0x01` |
+| Mesta Fusion | 5 | `0x02` |
+| Dahua | 5 | `0x04` |
+
+The physical RAD 700i capture returned `27 00 00 00 06` for both current and supported band masks. Applying the current app's map to those physically observed bytes yields set fields for X Band, K Band, Ka Band Superwide, Laser, MultaRadar CD, and MultaRadar CT. Byte index 5 is absent in the five-byte RAD 700i response, so Mesta/Dahua fields are unavailable rather than assumed false.
+
+This is a static interpretation of physically observed RAD 700i mask bytes. Multi-bit fields such as Shifter Mode and Ka Band should be preserved as masked numeric values until their value semantics are separately reduced.
 
 ## Other parser constraints
 
