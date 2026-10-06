@@ -275,6 +275,136 @@ Current Drive Smarter code constructs these packets:
 
 The app's generic radar-option filter enum contains `OFF=0`, `ON=1`, `LOW=2`, `MEDIUM=3`, and `HIGH=4`; those values must not be assigned to a specific radar option without the relevant option mapping.
 
+## Exact radar-option enum and response handling
+
+The current Drive Smarter 4.12 build contains a concrete `RadarOption` enum with byte values:
+
+| Value | Option |
+|---:|---|
+| `00` | ALL request selector |
+| `01` | X Filter |
+| `02` | K Filter |
+| `03` | K Notch |
+| `04` | Wi-Fi Filter |
+| `05` | K Notch 2 |
+| `06` | Ka Notch |
+
+The option value enum used by all six concrete options is also explicit:
+
+| Value | Filter state |
+|---:|---|
+| `00` | Off |
+| `01` | On |
+| `02` | Low |
+| `03` | Medium |
+| `04` | High |
+
+Drive Smarter's `0xAC RADAR_OPTIONS_RESPONSE` parser reads the F5 packet body as repeated **option/value pairs** beginning immediately after the command byte. Each known option ID is paired with one of the five filter-state values above. The `ALL=0` selector is used for requesting all options and is not treated as one of the six concrete option-state records.
+
+For `0xAE RADAR_OPTIONS_INFO_RESPONSE`, the current app treats the first payload byte as the option ID and the next byte as an information-type discriminator:
+
+- `0` = LIST;
+- `1` = NUMBER.
+
+For LIST responses, remaining bytes are matched against the same Off/On/Low/Medium/High value enum. The current app's handler does not reduce NUMBER responses into a richer object in the inspected path, so numeric-info payloads should remain raw until a concrete response is captured.
+
+The app sends `D3 <option-id>` for per-option information only after it has received a radar-options response and found an option whose information list is still missing. The toolbox continues to block live `D3` queries because no physical RAD 700i `D3/AE` exchange has been captured yet.
+
+## Exact marker-enable bit map
+
+Drive Smarter 4.12 defines the two-byte marker mask directly:
+
+| Byte | Mask | Marker type |
+|---:|---:|---|
+| 0 | `01` | Red Light Camera |
+| 0 | `02` | Speed Camera |
+| 0 | `04` | Average Speed Camera |
+| 0 | `08` | Speed Trap |
+| 0 | `10` | Other |
+| 0 | `20` | Camera |
+| 0 | `40` | Strelka |
+| 1 | `01` | Red Light & Speed Camera |
+| 1 | `02` | School Zone |
+| 1 | `04` | HOV Lane Camera |
+| 1 | `08` | Railway Camera |
+| 1 | `10` | Accident Blackspot |
+| 1 | `20` | Air Patrol |
+
+The app tests supported/current masks with `mask[byteIndex] & bitmask`. Its state-changing marker writer constructs `F5 03 93 <byte0> <byte1>`; that write remains blocked in the toolbox.
+
+Applying the current-app map to the physical RAD 700i masks already captured:
+
+- supported `0B 00` = Red Light Camera, Speed Camera, and Speed Trap;
+- current `1B 00` = Red Light Camera, Speed Camera, Speed Trap, and Other.
+
+This is stronger than the previous raw-mask-only documentation because the bytes are direct RAD 700i evidence and the bit names come from the exact current Drive Smarter build.
+
+## Exact current-app DISPLAY_LOCATION packing
+
+Drive Smarter 4.12 itself implements `DISPLAY_LOCATION (0xAD)`; this is no longer only a compatible-family candidate packer. The app first requires display-capability bit `0x04` to be set. The physical RAD 700i returned capability byte `0x07`, so the current app would mark display-location support as enabled on that session.
+
+The app accepts five logical inputs:
+
+- 8-bit threat/location type;
+- distance in feet;
+- 2-bit level;
+- heading in degrees;
+- 1-bit database/source flag.
+
+It divides heading by two using integer division and packs a five-byte, seven-bit-safe payload:
+
+```text
+p0 = threatType & 0x7F
+p1 = (((threatType & 0x80) >> 7) | (distanceFeet << 1)) & 0x7F
+p2 = (distanceFeet >> 6) & 0x7F
+p3 = ((distanceFeet >> 13) | ((headingDegrees / 2) << 3)) & 0x7F
+p4 = (((level & 0x03) << 5)
+      | ((headingDegrees / 2) >> 4)
+      | ((database & 0x01) << 4)) & 0x7F
+```
+
+The transmitted F5 request is therefore `F5 06 AD p0 p1 p2 p3 p4`. `DISPLAY_CLEAR_LOCATION (0xAE)` is sent as zero-payload `F5 01 AE`.
+
+This establishes the **current Drive Smarter application packing**, but not yet a physical RAD 700i display effect. The toolbox keeps both live writes blocked until a controlled hardware test or Drive Smarter capture exercises them.
+
+## Current-app turn-by-turn transport
+
+Drive Smarter contains a separate Cedar turn-by-turn BLE transport in addition to the normal radar F5 service:
+
+- service: `52AFFC3A-6424-11EC-90D6-0242AC120003`;
+- TX: `B5E22DFB-31EE-42AB-BE6A-9BE0837AA344`;
+- RX: `B5E22DFC-31EE-42AB-BE6A-9BE0837AA344`.
+
+This transport is **static application evidence only** until those UUIDs are found in a sanitized physical RAD 700i GATT inventory.
+
+Turn-by-turn messages use an `AA 55` envelope rather than the radar `F5` envelope. The current request values are:
+
+- `01` capabilities;
+- `02` supported maneuvers;
+- `03` maneuver data;
+- `04` cancel;
+- trailer `BB 66`.
+
+The one-byte capabilities request produced by the app is:
+
+```text
+AA 55 01 00 01 01 00 BB 66
+```
+
+and supported-maneuver query is the same shape with command/checksum `02`.
+
+For a capabilities response, Drive Smarter checks command byte `01` and reads:
+
+- byte 7: ETA supported flag;
+- byte 8: lane-data supported flag;
+- byte 9: maximum road/address text length.
+
+A command-`02` response marks maneuver support available.
+
+Maneuver frames include the maneuver type, modifier/icon code, exit number, distance, distance unit, optional ETA h/m/s, lane counts, UTF-8 road text terminated by NUL, a 16-bit additive checksum, then `BB 66`. The app maps maneuver types 1–16 to turn/new-name/depart/arrive/merge/on-ramp/off-ramp/fork/end-of-road/continue/roundabout/rotary/roundabout-turn/notification/exit-roundabout/exit-rotary. Modifier codes are 0–8 for none/U-turn/sharp-right/right/slight-right/straight/slight-left/left/sharp-left, and distance units are 0–4 for none/meters/kilometers/feet/miles.
+
+No live turn-by-turn writer is added to the toolbox from static analysis alone.
+
 ## Band-enable bitfield model
 
 Drive Smarter 4.12.0.0 also exposes its band-enable model as byte-index/mask pairs:
