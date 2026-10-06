@@ -111,39 +111,77 @@ The successful tone test does not establish human-readable names for tone select
 
 
 
-### Candidate Status-embedded alert tail
+### Current Drive Smarter alert decoding
 
-Compatible-family `RadarResponse` research documents Status (`0x99`) examples where the first status byte is followed by `0xA9` and additional alert bytes. The RAD 700i has directly produced the one-byte Status payloads `0x03` and `0x0B`, but this repository has not yet captured a longer RAD 700i Status frame during an active alert.
+Drive Smarter 4.12.0.0's alert-domain object resolves the field extraction for both F5 alert forms.
 
-The toolbox therefore retains any Status bytes after the first byte and labels a tail beginning with `0xA9` as a **candidate** embedded front/rear alert record. No field semantics are promoted until a physical RAD 700i active-alert capture confirms the relationship.
+For `0x82 ALERT_RESPONSE`, each alert record is 4 bytes:
 
-## Radar alert characteristic
+```text
+b0 b1 b2 b3
+```
 
-Known candidate layout:
+For `0xA9 ALERT_RESPONSE_FRONT_REAR`, each record is 5 bytes:
 
-| Offset | Length | Meaning | Confidence |
-|---:|---:|---|---|
-| 0 | 1 | Band/event code | `observed` for listed alert values |
-| 1 | 1 | Candidate signal strength | `inferred` |
-| 2+ | ? | Unknown / not yet documented | `unknown` |
+```text
+b0 b1 b2 b3 b4
+```
 
-### Byte 0 values
+Band ID:
 
-| Value | Candidate meaning | Confidence |
-|---:|---|---|
-| `0x00` | no active alert / clear | `inferred` |
-| `0x01` | X | `observed` |
-| `0x02` | K | `observed` |
-| `0x04` | Ka | `observed` |
-| `0x08` | Laser | `observed` |
-| `0x10` | Ka POP | `observed` |
-| `0x20` | K POP | `observed` |
+```text
+band = (b2 & 0x1C) >> 2
+if b2 & 0x40:
+    band |= 0x08
+```
 
-All nonzero values are powers of two. That pattern alone is not enough to establish that the byte is a bitfield.
+Current Drive Smarter band IDs are:
 
-### Byte 1
+| ID | Band/type |
+|---:|---|
+| 0 | X |
+| 1 | Ku |
+| 2 | K |
+| 3 | SWS |
+| 4 | Ka |
+| 5 | POP |
+| 6 | Laser |
+| 7 | Strelka |
+| 8 | MultaRadar CD |
+| 9 | MultaRadar CT |
+| 10 | Gatso |
+| 11 | VG2 |
+| 12 | Robot |
 
-The seed implementation treats byte 1 as signal strength and caps the application-visible result at `10`. That proves neither that the wire value is limited to 0–10 nor that it is linear.
+For the normal frequency-bearing bands, the app computes:
+
+```text
+frequency = (b0 & 0x7F) | ((b1 & 0x7F) << 7) | ((b2 & 0x03) << 14)
+front_strength = b3 & 0x1F
+```
+
+For a 5-byte A9 record it additionally computes:
+
+```text
+rear_strength = b4 & 0x1F
+direction = (((b4 & 0x20) >> 5) << 2) + ((b3 & 0x60) >> 5)
+```
+
+The app constant `NO_ARROW_SUPPORTED` is `7`. Human-readable names for the remaining numeric direction codes are not yet promoted.
+
+For Laser:
+
+```text
+laser_type = b0 & 0x07
+```
+
+The same object derives `lockedOut = (b2 & 0x20) == 0`, then forces it false for Ka and POP.
+
+These formulas are **current Drive Smarter application evidence**. They supersede the earlier toolbox's approximate 1–5 signal-strength grouping and band-specific frequency-wrap heuristic. They are not yet a claim that every field has been physically exercised on the RAD 700i firmware.
+
+### Status tails
+
+Drive Smarter 4.12.0.0 accepts Status frames longer than one payload byte, but constructs its Status object from the first payload byte only. Any remaining bytes should therefore be preserved as raw research data. Older compatible-family reports of an A9-shaped Status tail remain historical/family evidence only and are not promoted by the current toolbox UI.
 
 ## GPS characteristic
 
@@ -164,35 +202,15 @@ The same implementation has a fallback for payloads at least 6 bytes long:
 The fallback remains tentative and should not be treated as normative without controlled GPS captures.
 
 
-## Compatible-family A9 alert-record research
+## Earlier compatible-family A9 research
 
-A 2021 public reverse-engineering thread for an Escort Max 360 independently reports the same F5/A9 family and a five-byte alert record after command `A9`:
+Before the Drive Smarter 4.12.0.0 alert object was reduced, public Max 360 research correctly indicated a five-byte A9 record and supplied useful sample packets. The current app now provides stronger evidence for the exact field extraction.
 
-```text
-F5 06 A9 <frequency-1> <frequency-2> <band> <direction-strength> <unknown>
-```
+The public sample `F5 06 A9 09 3C 29 3E 00` decodes under the current application logic as band ID 2 (K), frequency integer `24073`, front signal strength `30`, rear signal strength `0`, direction code `1`, and `lockedOut=false`.
 
-The researcher reports deriving the fields by sniffing the detector/app traffic and injecting values. One example laser frame was `F5 06 A9 00 00 38 5F 20`; another radar example was `F5 06 A9 09 3C 29 3E 00`.
+The older approximation that grouped signal strength into five bars and treated direction as broad 0x20 ranges is superseded. The older "14-bit value plus 0x4000/0x8000 wrap" frequency model is also superseded: bits 0–1 of the band/flags byte supply frequency bits 14–15 directly.
 
-This is **compatible-family evidence, not yet a RAD 700i field-level confirmation**. It is useful because the RAD 700i protocol already exposes detector-to-client `A9` as the compatible-family front/rear alert-response command ID, whose public tables describe five bytes per alert. The next RAD 700i test should capture an actual alert and correlate the detector's displayed band/frequency/strength with those five bytes before promoting any field semantics.
-
-
-The same public injection table provides candidate lookup structure for two fields:
-
-- **Band byte:** the low five bits fall into four-value groups. In the primary family those groups are reported as X, Ku, K, unknown, Ka, POP, Laser, and Strelka. A second family reports MultaRadar CD, MultaRadar CT, Gatso, VG2, Robot, then unknown groups. Higher bits repeat those families.
-- **Direction/strength byte:** values `0x00-0x1F` are reported as no direction, `0x20-0x3F` front, `0x40-0x5F` rear, and `0x60-0x7F` side. Within each 0x20 block, the public table groups low-five-bit values into five strength levels: `00-06`, `07-0C`, `0D-12`, `13-18`, and `19-1F`. The source does not establish direction/strength semantics for values with bit 7 set.
-
-### Candidate frequency reconstruction
-
-Compatible-family framing says packet data bytes use seven bits. Combining the two reported frequency bytes as `f1 | (f2 << 7)` produces plausible known-band values in published samples:
-
-- an X-band example with bytes `2F 52` produces `10543`, directly in the expected X-band MHz range;
-- a K-band example with bytes `09 3C` produces raw `7689`; adding one 14-bit wrap (`16384`) yields `24073 MHz`.
-
-The toolbox therefore displays the following **hypothesis only** for controlled correlation: X = raw 14-bit value, K = raw + `0x4000`, Ka = raw + `0x8000`. This is not yet a RAD 700i-confirmed frequency formula.
-
-The same thread also documents compatible-family `0x83` setting-change packets. Those writes are intentionally **not** exposed by the toolbox; read-only `0x82` settings discovery is used instead.
-
+The independent compatible-family work remains useful corroboration and historical provenance, but the toolbox now follows the current Drive Smarter decoder.
 
 ## RAD 700i settings-mapping strategy
 
@@ -225,7 +243,7 @@ A 2026-09-29 reanalysis of the original sanitized RAD 700i Drive Smarter HCI cap
 | `F5 01 AF` | `F5 02 AB 00` | unknown | pair repeated in multiple sessions |
 | `F5 02 D1 00` | no deterministic response isolated | unknown | request observed |
 
-The mask bytes are published raw. Individual band/marker bit meanings are not inferred from this capture.
+The marker masks remain published raw. For band masks, Drive Smarter 4.12.0.0 static analysis now supplies a current byte-index/mask table. Applying that table to the physically observed `27 00 00 00 06` current/supported RAD 700i mask yields set fields for X Band, K Band, Ka Band Superwide, Laser, MultaRadar CD, and MultaRadar CT. Fields at byte index 5 are unavailable because the RAD 700i response contains only five mask bytes. Multi-bit fields are preserved as numeric masks rather than reduced to guessed boolean semantics.
 
 ### Setting IDs directly queried by Drive Smarter
 
@@ -287,7 +305,7 @@ Drive Smarter 4.12.0.0 parses:
 - detector `0x82 ALERT_RESPONSE` as zero or more **4-byte records**;
 - detector `0xA9 ALERT_RESPONSE_FRONT_REAR` as zero or more **5-byte records**.
 
-This confirms the record widths in the current application family. Exact field semantics still require reduction of the alert-domain object class and, for RAD 700i-specific claims, physical correlation.
+The alert-domain object has now also been reduced: exact band extraction, frequency assembly, signal-strength masks, rear-strength handling, numeric direction extraction, Laser subtype handling, and lockout flag behavior are documented above. Physical RAD 700i correlation is still required before claiming that every app-family field is exercised by this model.
 
 ### Status parser note
 
