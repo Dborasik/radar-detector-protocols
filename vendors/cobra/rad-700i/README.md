@@ -14,7 +14,14 @@ This directory documents the public state of RAD 700i protocol research. The can
 - Bidirectional Drive Smarter authentication/session traffic (`A3/A2/A5` and detector-originated `A1/A4/A3`).
 - Observed Status, model, version, GPS-equipped, display-capabilities, and display-length exchanges.
 - Recurring Drive Smarter speed-limit/current-speed updates (`A9`/`AA`) with compatible-family payload interpretation.
-- Candidate X/K/Ka/Laser/POP alert byte values and signal-strength byte.
+- Physical toolbox validation that `PLAY_TONE (0x9B)` values `1` and `2` produce audible tones while value `0` produced no audible output on the tested unit.
+- Physical toolbox validation that `A9` can update the posted speed-limit display; `AA` produced no visible current-speed override in the stationary test.
+- Periodic detector protocol traffic including no-alert `F5 01 82`, `F5 01 A7`, and variable Status values including `0x0B`.
+- Exact read-only Drive Smarter inventory exchanges for current/supported band masks (`86/8C`, `8C/8F`) and marker masks (`92/97`, `95/9B`).
+- Exact setting IDs queried by Drive Smarter on the tested RAD 700i, including model-specific IDs above the older compatible-family `0x1B` range.
+- Drive Smarter 4.12 resolution of observed zero-payload `AF` as the radar enable/disable support query and exact `D1 00` as `getRadarOptions(ALL)`; state-changing `D0` remains blocked.
+- Current Drive Smarter 4.12 alert record decoder: 4-byte `0x82` and 5-byte `0xA9` records, exact band extraction, frequency assembly, front/rear signal-strength masks, numeric direction extraction, Laser subtype, lockout behavior, and first-qualifying-record app selection.
+- Current Drive Smarter band-enable byte/mask map, applied to the physically observed RAD 700i current/supported mask.
 - Candidate GPS payload layout.
 
 The 2026-09-11 capture identifies the tested detector as `RAD 700i` and includes a version response containing `M1.2.3.6`.
@@ -23,9 +30,11 @@ The 2026-09-11 capture identifies the tested detector as `RAD 700i` and includes
 
 Among other things:
 
-- Exact radar-frequency representation and richer alert metadata.
-- Controlled validation of `DISPLAY_MESSAGE (0x9A)` and client `PLAY_TONE (0x9B)` on this model.
-- One-setting-at-a-time mapping of detector settings and sensitivity/mode synchronization.
+- Physical RAD 700i validation of at least one non-empty active-alert record; the current Drive Smarter application decoder itself is now documented.
+- Determine why the compatible-family `DISPLAY_MESSAGE (0x9A)` format produced no visible display change on the tested RAD 700i.
+- Characterize the exact meanings of `PLAY_TONE (0x9B)` payload values `0`, `1`, and `2`; values `1` and `2` are now audibly confirmed.
+- Physical correlation of detector-returned setting **value** semantics where the current Drive Smarter setting name is known but the numeric value labels are not independently isolated.
+- Marker-mask bit-level mapping and full per-option radar-options mapping. Band-enable byte/mask mapping is now available from Drive Smarter 4.12; multi-bit value semantics still need reduction where relevant.
 - Mute/lockout/mark synchronization.
 - Defender/community alert exchange.
 - Firmware-update transport and firmware-specific differences.
@@ -35,7 +44,7 @@ Among other things:
 
 Direct RAD 700i observations and compatible-family semantic corroboration are kept separate. The Drive Smarter HCI capture promotes F5 framing and several command exchanges to observed status, but it does not justify promoting commands that were not exercised.
 
-See [`packets.md`](packets.md), [`characteristics.md`](characteristics.md), and [`captures/2026-09-11-drive-smarter-session.md`](captures/2026-09-11-drive-smarter-session.md).
+See [`packets.md`](packets.md), [`characteristics.md`](characteristics.md), [`captures/2026-09-11-drive-smarter-session.md`](captures/2026-09-11-drive-smarter-session.md), and [`captures/2026-09-29-toolbox-observations.md`](captures/2026-09-29-toolbox-observations.md).
 
 ## Acknowledgement
 

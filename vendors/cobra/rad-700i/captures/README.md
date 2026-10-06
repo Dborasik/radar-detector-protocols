@@ -5,5 +5,6 @@ Capture artifacts in this directory must be sanitized before publication. Do not
 ## Available evidence
 
 - [`2026-09-11-drive-smarter-session.md`](2026-09-11-drive-smarter-session.md) — sanitized summary of an Android Bluetooth HCI snoop capture from a physical RAD 700i connected normally to Drive Smarter. Documents the observed F5 framing, client/detector authentication exchanges, protocol handles, query/response traffic, and recurring speed-related writes.
+- [`2026-09-29-toolbox-observations.md`](2026-09-29-toolbox-observations.md) — sanitized physical-toolbox observations for tone selectors, display-message negative result, speed-display behavior, and recurring no-alert/status/overspeed-request frames.
 
 For raw captures retained privately during analysis, record a cryptographic hash in the sanitized summary so future work can verify it came from the same source without publishing unrelated Bluetooth traffic.
