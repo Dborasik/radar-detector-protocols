@@ -1,6 +1,6 @@
 schema_version: "1.0"
 protocol_id: cobra.rad-700i
-contract_revision: 6
+contract_revision: 7
 
 vendor:
   name: Cobra
@@ -802,6 +802,7 @@ messages:
     notes:
       - This is a read-like discovery request. The state-changing SETTING_CHANGE request 0x83 is intentionally distinct and is not exercised by the toolbox research path.
       - The physical Drive Smarter capture directly queried IDs 01, 02, 07, 0A, 0E, 10, 13, 14, 15, 16, 24, 25, 26, 28, 29, 2B, and 2C.
+      - Current Drive Smarter 4.12 static analysis maps those IDs respectively to Sensitivity, Brightness, AutoMute, Voice, Units, AutoLearn, Cruise alert, Over speed alert, Language, Display color, Detail, Screen saver, Smart power, Low voltage alert, Quiet drive, K low band enable, and Caution area.
 
   - id: settings-values-response
     transport: ble-main
@@ -839,7 +840,7 @@ messages:
           - esclib-compatible-protocol
         notes:
           - Length 2 describes one repeated record containing setting ID then current value.
-          - Compatible-family research parses the remaining payload as repeated two-byte records. The RAD 700i capture confirms matching 0x8A traffic but individual setting meanings remain under physical correlation.
+          - Compatible-family research parses the remaining payload as repeated two-byte records. The RAD 700i capture confirms matching 0x8A traffic; current-app setting names are now mapped, while value semantics remain separately confidence-scoped.
 
   - id: settings-information-response
     transport: ble-main
@@ -888,7 +889,7 @@ messages:
       - Field length 1 describes one payload element; list settings may return multiple one-byte values after the setting ID.
       - Compatible-family research uses a single 0xF4 value after the setting ID to indicate an unsupported setting.
       - The RAD 700i capture directly observed 8B responses for IDs 01, 02, 07, 0A, 0E, 10, 13, 14, 15, 16, 24, 25, 26, 28, 29, 2B, and 2C.
-      - IDs 13 and 14 both returned bytes 14 A0 05 after the ID. These match the compatible-family range convention of minimum 20, maximum 160, increment 5, but the user-facing setting identity remains under physical correlation.
+      - IDs 13 and 14 are Cruise alert and Over speed alert in current Drive Smarter 4.12. Both returned bytes 14 A0 05 after the ID, matching the family range convention of minimum 20, maximum 160, increment 5.
 
   - id: speed-information-request
     transport: ble-main
@@ -1043,7 +1044,7 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
         notes:
-          - "Exact RAD 700i payload observed: 27 00 00 00 06. Individual bit meanings are not yet mapped."
+          - "Exact RAD 700i payload observed: 27 00 00 00 06. Drive Smarter 4.12 maps set fields to X Band, K Band, Ka Band Superwide, Laser, MultaRadar CD, and MultaRadar CT; multi-bit semantics remain raw."
 
   - id: band-enables-request
     transport: ble-main
@@ -1105,7 +1106,7 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
         notes:
-          - "Exact RAD 700i payload observed: 27 00 00 00 06. Individual bit meanings are not yet mapped."
+          - "Exact RAD 700i payload observed: 27 00 00 00 06. Drive Smarter 4.12 maps set fields to X Band, K Band, Ka Band Superwide, Laser, MultaRadar CD, and MultaRadar CT; multi-bit semantics remain raw."
 
   - id: marker-enables-supported-request
     transport: ble-main
@@ -1276,7 +1277,7 @@ messages:
     endpoint: tx-characteristic
     direction: client-to-detector
     confidence: observed
-    description: Zero-payload client request named DISABLE_ENABLE_RADAR by Drive Smarter 4.12.0.0 static analysis; exact zero-payload semantics remain unresolved.
+    description: Exact zero-payload radar enable/disable support query used by Drive Smarter; physically paired with 0xAB support response.
     minimum_length: 3
     evidence:
       - drive-smarter-capture-2026-09-11
@@ -1289,8 +1290,8 @@ messages:
         confidence: observed
         values:
           "0xAF":
-            meaning: DISABLE_ENABLE_RADAR application symbol; exact zero-payload operation unresolved
-            confidence: inferred
+            meaning: Radar enable/disable support query
+            confidence: observed
             evidence:
               - drive-smarter-capture-2026-09-11
               - drive-smarter-static-analysis-4-12-0-0
@@ -1298,6 +1299,7 @@ messages:
           - drive-smarter-capture-2026-09-11
     notes:
       - In two sessions this was followed by detector frame F5 02 AB 00.
+      - Drive Smarter's DetectorRequest table stores the exact zero-payload AF packet as RADAR_ENABLE_DISABLE_REQUEST; payload-bearing/state-changing AF forms are not inferred.
 
   - id: radar-enable-disable-support-response
     transport: ble-main
@@ -1344,7 +1346,7 @@ messages:
     endpoint: tx-characteristic
     direction: client-to-detector
     confidence: observed
-    description: One-byte client request observed in separate Drive Smarter sessions; Drive Smarter 4.12.0.0 names 0xD1 RADAR_OPTIONS_REQUEST.
+    description: Read-like get-all-radar-options request observed in Drive Smarter sessions; current app constructs D1 plus RadarOption.ALL.
     minimum_length: 4
     evidence:
       - drive-smarter-capture-2026-09-11
@@ -1372,15 +1374,16 @@ messages:
         confidence: observed
         values:
           "0x00":
-            meaning: Observed request value
+            meaning: RadarOption.ALL in Drive Smarter 4.12.0.0
             confidence: observed
             evidence:
               - drive-smarter-capture-2026-09-11
         evidence:
           - drive-smarter-capture-2026-09-11
     notes:
-      - No deterministic application-level response was isolated.
-      - Static analysis names the command but does not yet establish the meaning of observed payload 0x00, so the toolbox does not replay it.
+      - No deterministic application-level AC response was isolated in the sanitized baseline capture.
+      - Current app code constructs getRadarOptions as D1 plus RadarOption.ALL; the physical request establishes ALL = 0x00 for this build.
+      - State-changing D0 RADAR_OPTIONS_SET remains distinct and is not part of this read-only message.
 
   - id: play-tone-request
     transport: ble-main
@@ -1461,6 +1464,7 @@ messages:
     notes:
       - F5 01 82 was repeatedly observed while no active alert was present and is therefore treated as a no-active-alert frame on the tested unit.
       - Drive Smarter 4.12.0.0 statically parses non-empty 0x82 payloads as 4-byte alert records and exposes exact band/frequency/strength/lockout bit extraction; that active-alert layout is still not physically captured from the RAD 700i.
+      - The app skips SWS and zero-frequency non-Laser records and stops after the first qualifying alert; research tooling preserves all complete raw records separately.
 
   - id: overspeed-warning-request
     transport: ble-main
@@ -1518,7 +1522,7 @@ hypotheses:
 
   - id: drive-smarter-alert-record-decoder
     confidence: inferred
-    description: Drive Smarter Android 4.12.0.0 decodes 0x82 as 4-byte alert records and 0xA9 as 5-byte front/rear alert records. Band is extracted from bits 2-4 plus bit 6 of byte 2; frequency combines two 7-bit bytes plus bits 0-1 of byte 2; signal strength uses the low five bits of byte 3 and, for A9, byte 4; A9 direction is a three-bit numeric code assembled from byte 3 bits 5-6 and byte 4 bit 5.
+    description: Drive Smarter Android 4.12.0.0 decodes 0x82 as 4-byte alert records and 0xA9 as 5-byte front/rear alert records. Band is extracted from bits 2-4 plus bit 6 of byte 2; frequency combines two 7-bit bytes plus bits 0-1 of byte 2; signal strength uses the low five bits of byte 3 and, for A9, byte 4; A9 direction is a three-bit numeric code assembled from byte 3 bits 5-6 and byte 4 bit 5. The app then skips SWS/invalid-frequency records and stops after the first qualifying alert.
     evidence:
       - drive-smarter-static-analysis-4-12-0-0
     test_needed: Capture at least one physical RAD 700i active alert and correlate the decoded application fields with the detector display to establish model-specific use. Additional bands improve coverage but are not required to establish the app-family decoder.
@@ -1532,13 +1536,13 @@ hypotheses:
     test_needed: Treat multi-bit fields as raw masked values until their numeric value semantics are reduced; verify model-specific UI correspondence only when needed.
 
   - id: settings-id-map
-    confidence: hypothesis
-    description: Older compatible-family setting IDs/names may overlap portions of the RAD 700i settings surface, but the model-specific Cobra menu differs and must be mapped by physical correlation rather than assumed wholesale.
+    confidence: inferred
+    description: Current Drive Smarter 4.12 RadarSetting.Type ordering and getReqvalue-keyed handlers align with the established one-based family IDs and the physically observed RAD 700i setting requests, resolving symbolic names through 0x2C. This names settings but does not automatically promote every numeric value label.
     evidence:
+      - drive-smarter-static-analysis-4-12-0-0
       - drive-smarter-capture-2026-09-11
       - esclib-compatible-protocol
-      - cobra-rad700i-support
-    test_needed: Query all setting IDs read-only with 0x82, record 0x8A/0x8B responses, compare with current physical menu state, then isolate any ambiguous IDs with one-setting-at-a-time Drive Smarter captures.
+    test_needed: Physically correlate only value semantics that remain ambiguous; state-changing 0x83 writes remain outside the normal discovery path.
 
   - id: gps-short-layout
     confidence: hypothesis
@@ -1554,7 +1558,7 @@ sources:
     author: null
     path: vendors/cobra/rad-700i/analysis/2026-10-05-drive-smarter-4.12.0.0.md
     accessed: "2026-10-05"
-    notes: Derived protocol symbols, request/response identifiers, exact alert-record bit extraction, and band-enable byte/mask mappings from the exact APK build identified by SHA-256 in sources.md. APK/decompiled source is not redistributed. Application-wide evidence only unless independently observed on the RAD 700i.
+    notes: Derived protocol symbols, request/response identifiers, exact alert-record bit extraction and selection behavior, setting-name mapping, radar-options/support query construction, and band-enable byte/mask mappings from the exact APK build identified by SHA-256 in sources.md. APK/decompiled source is not redistributed. Application-wide evidence only unless independently observed on the RAD 700i.
 
   - id: roadsage-compatible-protocol
     type: public-implementation
