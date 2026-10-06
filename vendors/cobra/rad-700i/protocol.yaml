@@ -918,7 +918,7 @@ messages:
               - drive-smarter-capture-2026-09-11
         evidence:
           - drive-smarter-capture-2026-09-11
-      - name: requested_kind
+      - name: requested_flags
         offset: 3
         length: 1
         type: u8
@@ -926,23 +926,27 @@ messages:
         confidence: observed
         values:
           "0x01":
-            meaning: Speed limit in compatible-family research
+            meaning: Request posted speed-limit data (bit 0)
             confidence: inferred
             evidence:
-              - esclib-compatible-protocol
+              - drive-smarter-static-analysis-4-12-0-0
           "0x02":
-            meaning: Current speed in compatible-family research
+            meaning: Request actual-speed data (bit 1)
             confidence: inferred
             evidence:
-              - esclib-compatible-protocol
+              - drive-smarter-static-analysis-4-12-0-0
           "0x03":
-            meaning: Value directly observed on RAD 700i after detector-originated authentication; exact meaning unknown
-            confidence: observed
+            meaning: Request both posted speed-limit and actual-speed data; value directly observed on RAD 700i
+            confidence: inferred
             evidence:
               - drive-smarter-capture-2026-09-11
+              - drive-smarter-static-analysis-4-12-0-0
         evidence:
           - drive-smarter-capture-2026-09-11
-          - esclib-compatible-protocol
+          - drive-smarter-static-analysis-4-12-0-0
+        notes:
+          - Drive Smarter stores only payload & 0x03. Its current speed-update use case defines bit 0 as FLAG_SPEED_LIMIT and bit 1 as FLAG_SPEED.
+          - The physical RAD 700i emitted F5 02 A6 03 after authentication, so the current app interprets that observed value as requesting both data streams.
 
   - id: settings-request
     transport: ble-main
@@ -1241,7 +1245,7 @@ messages:
     endpoint: tx-characteristic
     direction: client-to-detector
     confidence: observed
-    description: Recurring one-byte Drive Smarter update; compatible-family research names 0xAB overspeed-limit data.
+    description: Recurring one-byte Drive Smarter overspeed-limit update. Current-app static analysis resolves the value construction used by Drive Smarter.
     minimum_length: 4
     evidence:
       - drive-smarter-capture-2026-09-11
@@ -1269,12 +1273,18 @@ messages:
         confidence: observed
         values:
           "0x00":
-            meaning: Value repeatedly observed in the capture; compatible-family research interprets zero as off
+            meaning: Drive Smarter OFF/no-threshold path; value repeatedly observed in the physical RAD 700i capture
             confidence: observed
             evidence:
               - drive-smarter-capture-2026-09-11
+              - drive-smarter-static-analysis-4-12-0-0
         evidence:
           - drive-smarter-capture-2026-09-11
+          - drive-smarter-static-analysis-4-12-0-0
+        notes:
+          - Drive Smarter's OverSpeedLimit enum uses OFF=-1, SPEED_LIMIT=0, then +5/+7/+10/+15/+20/+25 preferences.
+          - The app emits payload 0 when the active overspeed preference resolves to -1. Otherwise it converts a positive threshold for the active unit mode when needed, adds 64, and sends the low byte.
+          - The update coroutine repeats this command every 4000 ms after detector 0xA7 starts the overspeed-warning job.
 
   - id: radar-enable-disable-request
     transport: ble-main
