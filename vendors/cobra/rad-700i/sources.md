@@ -18,6 +18,10 @@ APK components and SHA-256:
 
 These hashes identify the exact publicly distributed Android build used for static protocol research. The APKs and decompiled application source are **not** committed to this repository. Any protocol findings derived from inspection must be documented as behavior/structure, with independent physical-capture validation where possible, rather than copying proprietary implementation code.
 
+On 2026-10-06 the same build was re-verified from user-supplied copies of all three APK components and full JADX output. All three APK SHA-256 values matched the table above exactly. This deeper pass therefore refines the existing 4.12.0.0/build-614 evidence target rather than introducing a second build. It reduced marker-enable bits, radar-option IDs and parser structure, display-location packing, turn-by-turn framing/UUIDs, and additional setting-value semantics. The supplied APKs/decompiled sources remain outside this repository.
+
+A broad string inspection of the matching ARM64 split did not reveal an obvious alternate native Cobra/Escort command table. This is a negative search result only and is not treated as proof that native code can never participate in detector-related behavior.
+
 ### Static-analysis findings from Drive Smarter 4.12.0.0
 
 JADX output for the exact build above contains a Bluetooth UUID model class under the app's bundled `smartsight.core.bt` code. Its symbolic names distinguish:
@@ -25,13 +29,14 @@ JADX output for the exact build above contains a Bluetooth UUID model class unde
 - Cobra/iRadar primary service `2A668FA4-2902-4468-8568-3EBE69A930A0`;
 - Escort-family service `B5E22DE9-31EE-42AB-BE6A-9BE0837AA344`;
 - Escort-family live TX characteristic `B5E22DEA-31EE-42AB-BE6A-9BE0837AA344`;
-- Escort-family live RX characteristic `B5E22DEB-31EE-42AB-BE6A-9BE0837AA344`.
+- Escort-family live RX characteristic `B5E22DEB-31EE-42AB-BE6A-9BE0837AA344`;
+- Cedar turn-by-turn service `52AFFC3A-6424-11EC-90D6-0242AC120003`, TX `B5E22DFB-31EE-42AB-BE6A-9BE0837AA344`, and RX `B5E22DFC-31EE-42AB-BE6A-9BE0837AA344` as application-family static evidence.
 
 This is static-analysis corroboration for the UUIDs already observed/corroborated elsewhere; it does not replace physical RAD 700i capture evidence.
 
 The same decompilation exposes typed radar-domain symbols including `RadarMarkerEnable.Type`. A centralized response-code class preserves symbolic names and numeric byte values for the current Drive Smarter protocol family, including `ALERT_RESPONSE (0x82)`, `ALERT_RESPONSE_FRONT_REAR (0xA9)`, `BAND_DIRECTION_RESPONSE (0xAA)`, settings/band/marker/status responses, Bluetooth unlock messages, radar-options responses, and `UNSUPPORTED_REQUEST (0xF0)`.
 
-The current alert-domain object was also reduced far enough to derive the application's exact 4-byte/5-byte alert-record bit extraction for band ID, frequency integer, front/rear signal strength, numeric direction, Laser subtype, and lockout state. The current band-enable model provides byte-index/mask mappings for X/K/Ka/Laser and the extended regional band options. These derived semantics are recorded in [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md). They are current-application evidence; commands or alert forms are only promoted to RAD 700i-observed status when backed by physical capture/experiment evidence.
+The current alert-domain object was also reduced far enough to derive the application's exact 4-byte/5-byte alert-record bit extraction for band ID, frequency integer, front/rear signal strength, numeric direction, Laser subtype, and lockout state. The current band/marker models provide byte-index/mask mappings; radar-option enums/parsers, display-location packing, and the separate turn-by-turn transport are also reduced. These derived semantics are recorded in [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md). They are current-application evidence; commands or alert forms are only promoted to RAD 700i-observed status when backed by physical capture/experiment evidence.
 
 
 ## `drive-smarter-capture-2026-09-11`
