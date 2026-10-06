@@ -29,7 +29,7 @@ JADX output for the exact build above contains a Bluetooth UUID model class unde
 
 This is static-analysis corroboration for the UUIDs already observed/corroborated elsewhere; it does not replace physical RAD 700i capture evidence.
 
-The same decompilation exposes typed radar-domain symbols including `RadarMarkerEnable.Type`. It also reveals references to a radar protocol constants class whose surviving symbolic field names include `RADAR_OPTIONS_INFO_RESPONSE`, `REPORT_BUTTON_PRESS`, `UNLOCK_RESPONSE`, `MODEL_INFO_RESPONSE`, and `BAND_ENABLES_RESPONSE`. Numeric mappings from that class have not yet been extracted, so these names are recorded as research leads rather than promoted protocol facts.
+The same decompilation exposes typed radar-domain symbols including `RadarMarkerEnable.Type`. A centralized response-code class preserves symbolic names and numeric byte values for the current Drive Smarter protocol family, including `ALERT_RESPONSE (0x82)`, `ALERT_RESPONSE_FRONT_REAR (0xA9)`, `BAND_DIRECTION_RESPONSE (0xAA)`, settings/band/marker/status responses, Bluetooth unlock messages, radar-options responses, and `UNSUPPORTED_REQUEST (0xF0)`. A sanitized derived table is recorded in [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md). These application-wide symbols do not by themselves prove that every command is supported by the RAD 700i.
 
 
 ## `drive-smarter-capture-2026-09-11`
