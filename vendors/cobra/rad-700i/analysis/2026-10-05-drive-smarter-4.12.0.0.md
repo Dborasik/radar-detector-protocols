@@ -264,6 +264,32 @@ Drive Smarter's current `RadarSetting.Type` enum, its `getReqvalue()` keyed hand
 
 The physical capture directly queried IDs `01 02 07 0A 0E 10 13 14 15 16 24 25 26 28 29 2B 2C`. The names above are current-app static semantics; the detector-returned `8A/8B` values remain raw where their user-facing value meanings have not been isolated.
 
+## Current-app value labels for physically queried settings
+
+Drive Smarter's setting-response parser indexes the exact app resource tables for list settings and builds explicit ranges for the two speed-alert settings. This lets the physical 2026-09-11 settings inventory be annotated without borrowing labels from an older detector family.
+
+| ID | Setting | Physical supported/info bytes | Current app interpretation | Physical current value |
+|---:|---|---|---|---|
+| `01` | Sensitivity | `00 07 08 09 10` | `00 Auto`, `07 Low`, `08 Medium`, `09 High`; raw `10` has **no entry** in the current app's sensitivity label table | `10` = unknown/unmapped |
+| `02` | Brightness | `00 01 02 03` | Full dark, Minimum, Medium, Maximum | `01` = Minimum |
+| `07` | AutoMute | `00 01` | Off, On | `01` = On |
+| `0A` | Voice | `00 01` | Off, On | `01` = On |
+| `0E` | Units | `00 01` | Imperial, Metric | `00` = Imperial |
+| `10` | AutoLearn | `00 01` | Off, On in the settings UI | `01` = On |
+| `13` | Cruise Alert | `14 A0 05` | Off plus range 20–160 step 5 | `00` = Off |
+| `14` | Over Speed Alert | `14 A0 05` | Off plus range 20–160 step 5 | `00` = Off |
+| `15` | Detector Language | `00 01` | English, Spanish | `00` = English |
+| `16` | Display Color | `07 02 03 01 06` | White, Green, Blue, Red, Yellow | `01` = Red |
+| `24` | Detail | `00 01` | Less, More | `01` = More |
+| `25` | Screen Saver | `00 01 03` | Off, 1 Minute, 3 Minute | `01` = 1 Minute |
+| `26` | Smart Power | `00 01` | Off, On | `00` = Off |
+| `28` | Low Voltage Alert | `00 01` | Off, On | `00` = Off |
+| `29` | Quiet Drive | `00 01` | Off, On | `00` = Off |
+| `2B` | K Low Band Enable | `00 01` | Off, On | `00` = Off |
+| `2C` | Caution Area | `00 01` | Off, On | `01` = On |
+
+The label association above is **current-app static evidence applied to physically observed bytes**. It is stronger than an older compatible-family guess but is still distinct from a controlled one-setting-at-a-time physical toggle. In particular, the raw Sensitivity value `0x10` is deliberately not forced into a label: Drive Smarter 4.12's resource table contains indexed sensitivity labels only through value `10 decimal (0x0A)`, while this detector returned `0x10 decimal 16`.
+
 ## Radar-options and radar-support query construction
 
 Current Drive Smarter code constructs these packets:
