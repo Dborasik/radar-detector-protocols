@@ -67,7 +67,7 @@ Compatible-family tables identify `A9` as speed-limit update, `AA` as actual-spe
 
 ### Settings synchronization observed
 
-Drive Smarter sent multiple `82 <setting-id>` requests and received `8B ...` supported-values/information responses plus `8A <setting-id> <current-value>` responses. This confirms that the settings-query family is active on the RAD 700i, but individual setting meanings should only be promoted after one-setting-at-a-time controlled captures.
+Drive Smarter sent multiple `82 <setting-id>` requests and received `8B ...` supported-values/information responses plus `8A <setting-id> <current-value>` responses. This confirms that the settings-query family is active on the RAD 700i. Static analysis of the exact Drive Smarter 4.12 build now resolves the current-app setting names for the observed IDs; detector-returned value semantics remain conservative where they have not been physically correlated.
 
 ### Follow-up physical toolbox observations — 2026-09-29
 
@@ -240,8 +240,8 @@ A 2026-09-29 reanalysis of the original sanitized RAD 700i Drive Smarter HCI cap
 | `F5 01 95` | `F5 03 9B 0B 00` | supported marker-enable mask | exact bytes observed |
 | `F5 01 92` | `F5 03 97 1B 00` | current marker-enable mask | exact bytes observed |
 | `F5 02 84 00` | no uniquely paired response isolated | settings request | request observed |
-| `F5 01 AF` | `F5 02 AB 00` | unknown | pair repeated in multiple sessions |
-| `F5 02 D1 00` | no deterministic response isolated | unknown | request observed |
+| `F5 01 AF` | `F5 02 AB 00` | radar enable/disable support query | exact pair observed; current app detector-request table confirms zero-payload query |
+| `F5 02 D1 00` | no deterministic response isolated | get all radar options | request observed; current app constructs `D1 + RadarOption.ALL`, establishing `ALL=00` |
 
 The marker masks remain published raw. For band masks, Drive Smarter 4.12.0.0 static analysis now supplies a current byte-index/mask table. Applying that table to the physically observed `27 00 00 00 06` current/supported RAD 700i mask yields set fields for X Band, K Band, Ka Band Superwide, Laser, MultaRadar CD, and MultaRadar CT. Fields at byte index 5 are unavailable because the RAD 700i response contains only five mask bytes. Multi-bit fields are preserved as numeric masks rather than reduced to guessed boolean semantics.
 
@@ -253,9 +253,9 @@ The tested RAD 700i was queried with `0x82` for:
 01 02 07 0A 0E 10 13 14 15 16 24 25 26 28 29 2B 2C
 ```
 
-This is significant because IDs `24–2C` are outside the older compatible-family setting table ending at `0x1B`. The toolbox therefore restricts its live Settings Explorer to the IDs that were actually observed and treats old setting names only as hints.
+IDs `24–2C` extend beyond the older public compatible-family table, but the current Drive Smarter 4.12 `RadarSetting.Type` sequence resolves the symbolic names used by this app build. For the physically queried high IDs: `24 Detail`, `25 Screen saver`, `26 Smart power`, `28 Low voltage alert`, `29 Quiet drive`, `2B K low band enable`, and `2C Caution area`. The toolbox remains restricted to IDs physically queried on the RAD 700i.
 
-Exact `8B` metadata/current `8A` values are preserved in the sanitized capture summary. IDs `13` and `14` returned `14 A0 05`, matching the older family convention for a numeric range of 20–160 in steps of 5. The range interpretation is corroborated, but the RAD 700i user-facing setting name still requires controlled correlation.
+Exact `8B` metadata/current `8A` values are preserved in the sanitized capture summary. IDs `13 Cruise alert` and `14 Over speed alert` returned `14 A0 05`, matching the family convention for a numeric range of 20–160 in steps of 5. The setting names are current-app static evidence; individual value labels remain separately confidence-scoped.
 
 ### Safety consequence
 
@@ -281,7 +281,7 @@ Toolbox policy: keep `0xAD` blocked until a physical RAD 700i Drive Smarter capt
 
 Static inspection of the exact hashed Android build documented in `sources.md` reveals a centralized radar response-code table. It independently names the currently implemented family responses, including `0x82 ALERT_RESPONSE`, `0xA9 ALERT_RESPONSE_FRONT_REAR`, `0xAA BAND_DIRECTION_RESPONSE`, `0xAB RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE`, `0xAC RADAR_OPTIONS_RESPONSE`, and `0xAE RADAR_OPTIONS_INFO_RESPONSE`, alongside the settings/band/marker/status/authentication responses already seen in compatible-family research.
 
-The app's parser has explicit branches for `0x82` and `0xA9` that produce alert collections. This materially strengthens the conclusion that these are two distinct alert response forms in the current Drive Smarter protocol family. It still does not establish the RAD 700i field-level A9 payload semantics; physical correlation or further static parser reduction is required.
+The app's parser has explicit branches for `0x82` and `0xA9` and the alert-domain object has been reduced to the exact field operations documented above. The remaining gap is model-level physical correlation of a non-empty RAD 700i alert, not application-side field decoding.
 
 See [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md) for the full derived response table and provenance.
 
@@ -290,8 +290,8 @@ See [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-
 
 Static analysis of Drive Smarter 4.12.0.0 now provides the exact current request-command symbols for the major radar protocol operations. Of particular relevance to the RAD 700i capture:
 
-- `0xAF = DISABLE_ENABLE_RADAR` in the application enum; this names the previously unknown observed `F5 01 AF` request, but the zero-payload operation remains blocked because its exact side effect/query semantics are not proven.
-- `0xD1 = RADAR_OPTIONS_REQUEST`; this names the previously unknown observed `F5 02 D1 00` request. Payload/response semantics remain unresolved.
+- `0xAF = DISABLE_ENABLE_RADAR` in the request enum, while the detector-query table stores exact `F5 01 AF` as `RADAR_ENABLE_DISABLE_REQUEST`; its paired response is `0xAB RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE`. The toolbox permits only this observed zero-payload read/support query.
+- `0xD1 = RADAR_OPTIONS_REQUEST`; the app's `getRadarOptions` path sends `D1` plus `RadarOption.ALL`. The physical `D1 00` capture therefore establishes `ALL=0x00`. The toolbox permits only this exact read-like form; `D0` writes and unobserved per-option `D3` queries remain blocked.
 - `0xAD = DISPLAY_LOCATION` and `0xAE = DISPLAY_CLEAR_LOCATION`, strengthening the current-app relevance of location/community display research.
 - `0xD0 = RADAR_OPTIONS_SET` and `0xD3 = RADAR_OPTIONS_INFORMATION`.
 - the current enum does not expose the older compatible-family arbitrary `DISPLAY_MESSAGE 0x9A` or `PLAY_TONE 0x9B` request symbols.
@@ -306,6 +306,10 @@ Drive Smarter 4.12.0.0 parses:
 - detector `0xA9 ALERT_RESPONSE_FRONT_REAR` as zero or more **5-byte records**.
 
 The alert-domain object has now also been reduced: exact band extraction, frequency assembly, signal-strength masks, rear-strength handling, numeric direction extraction, Laser subtype handling, and lockout flag behavior are documented above. Physical RAD 700i correlation is still required before claiming that every app-family field is exercised by this model.
+
+### Drive Smarter alert selection behavior
+
+After decoding complete 4-byte or 5-byte records, the current app skips SWS records, accepts Laser without an ordinary frequency, accepts other bands only when the reconstructed frequency is greater than zero, and stops after the first qualifying record. Research tooling should preserve all raw complete records and expose this app-visible subset separately.
 
 ### Status parser note
 
