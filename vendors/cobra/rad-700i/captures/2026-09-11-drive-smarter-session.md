@@ -73,7 +73,7 @@ Compatible-family protocol tables identify `A9` as speed-limit update, `AA` as a
 
 ## Settings discovery traffic
 
-The session also included requests for settings information (`82 <setting-id>`) and matching `8B` / `8A` responses. This establishes that the settings-query family is active on the RAD 700i, but individual setting meanings are not promoted here without one-setting-at-a-time controlled captures.
+The session also included requests for settings information (`82 <setting-id>`) and matching `8B` / `8A` responses. This establishes that the settings-query family is active on the RAD 700i. Later static analysis of the exact Drive Smarter 4.12 build resolves the current-app setting names and many value-label tables; the raw bytes in this capture remain the direct hardware evidence, while those labels are explicitly static-app semantics.
 
 ## Not established by this capture
 
@@ -140,7 +140,11 @@ Drive Smarter queried these setting IDs with `F5 02 82 <id>`. For each listed ID
 
 The table above is direct RAD 700i wire evidence. Later Drive Smarter 4.12 static analysis resolves the current-app symbolic names for these observed IDs: `01 Sensitivity`, `02 Brightness`, `07 AutoMute`, `0A Voice`, `0E Units`, `10 AutoLearn`, `13 Cruise alert`, `14 Over speed alert`, `15 Language`, `16 Display color`, `24 Detail`, `25 Screen saver`, `26 Smart power`, `28 Low voltage alert`, `29 Quiet drive`, `2B K low band enable`, and `2C Caution area`. That names the request IDs; detector-returned value semantics still require physical correlation where not independently established.
 
-For IDs `13` and `14`, the three information bytes `14 A0 05` match the compatible-family range convention of minimum `20`, maximum `160`, increment `5`. That interpretation remains corroborated/inferred until the RAD 700i UI setting is isolated.
+For IDs `13` and `14`, the three information bytes `14 A0 05` match the current Drive Smarter range parser and compatible-family convention of minimum `20`, maximum `160`, increment `5`, with a synthetic Off entry. The physical current value is `00`, which the current app represents as Off.
+
+Deeper static reduction also resolves current-app labels for many other physically observed values: Brightness `01=Minimum`, AutoMute `01=On`, Voice `01=On`, Units `00=Imperial`, Language `00=English`, Display Color `01=Red`, Detail `01=More`, Screen Saver `01=1 Minute`, Smart Power `00=Off`, Low Voltage Alert `00=Off`, Quiet Drive `00=Off`, K Low Band Enable `00=Off`, and Caution Area `01=On`. These labels come from the exact current-app parser/resource arrays, not from separately toggling each setting on hardware.
+
+Sensitivity is intentionally **not** fully labeled: the physical detector reports supported/current value `0x10` (decimal 16), while the current app sensitivity resource array only has indices 0 through 10. `0x10` therefore remains unresolved rather than being mislabeled as Extreme (`0x0A`). AutoLearn's physical 0/1 bytes are also retained raw because the current handler does not expose a normal value-label array in this build.
 
 ### Other recurring traffic recovered from the same capture
 
