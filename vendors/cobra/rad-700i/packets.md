@@ -199,7 +199,7 @@ The same implementation has a fallback for payloads at least 6 bytes long:
 - bytes 0–3: signed LE int32 latitude × `1e-6`
 - bytes 4–5: signed LE int16 longitude × `1e-4`
 
-The fallback remains tentative and should not be treated as normative without controlled GPS captures.
+The fallback remains tentative and should not be treated as normative without controlled GPS captures. The exact Drive Smarter 4.12 managed decompilation and split-APK string scan do not contain the `FE51` UUID literal, so this endpoint/layout remains sourced from the independent public implementation rather than from the current Drive Smarter build.
 
 
 ## Earlier compatible-family A9 research
@@ -243,7 +243,7 @@ A 2026-09-29 reanalysis of the original sanitized RAD 700i Drive Smarter HCI cap
 | `F5 01 AF` | `F5 02 AB 00` | radar enable/disable support query | exact pair observed; current app detector-request table confirms zero-payload query |
 | `F5 02 D1 00` | no deterministic response isolated | get all radar options | request observed; current app constructs `D1 + RadarOption.ALL`, establishing `ALL=00` |
 
-The marker masks remain published raw. For band masks, Drive Smarter 4.12.0.0 static analysis now supplies a current byte-index/mask table. Applying that table to the physically observed `27 00 00 00 06` current/supported RAD 700i mask yields set fields for X Band, K Band, Ka Band Superwide, Laser, MultaRadar CD, and MultaRadar CT. Fields at byte index 5 are unavailable because the RAD 700i response contains only five mask bytes. Multi-bit fields are preserved as numeric masks rather than reduced to guessed boolean semantics.
+Drive Smarter 4.12.0.0 now supplies exact maps for both band and marker masks. Applying the marker map to physical RAD 700i evidence resolves `0B 00` supported markers as Red Light Camera, Speed Camera, and Speed Trap; `1B 00` current markers adds Other. Applying the band map to the physically observed `27 00 00 00 06` current/supported RAD 700i mask yields set fields for X Band, K Band, Ka Band Superwide, Laser, MultaRadar CD, and MultaRadar CT. Fields at byte index 5 are unavailable because the RAD 700i response contains only five mask bytes. Multi-bit band fields are preserved as numeric masks rather than reduced to guessed boolean semantics.
 
 ### Setting IDs directly queried by Drive Smarter
 
@@ -262,20 +262,121 @@ Exact `8B` metadata/current `8A` values are preserved in the sanitized capture s
 Read-only characterization can now replay only the exact observed inventory requests above. State-changing siblings—`83` setting change, `85` band-enable set, `93` marker-enable set, defaults, lockout, power, flash, firmware, and reset operations—remain outside the toolbox research path.
 
 
-## Candidate display-location packing
+## Current Drive Smarter display-location packing
 
-RoadSage implements the compatible-family client request `DISPLAY_LOCATION (0xAD)` with a five-byte payload. Its packing logic uses seven-bit-safe fields containing:
+The exact Drive Smarter 4.12 implementation now removes the earlier dependency on a compatible-family guess. When its display-location capability flag is set, the app emits `DISPLAY_LOCATION (0xAD)` with five seven-bit-safe payload bytes.
 
-- alert/location type;
-- distance split across multiple bytes;
-- heading represented at half-degree resolution;
-- an age field;
-- a database/source flag.
+Logical inputs are:
 
-The exact bit packing is available in the pinned RoadSage source, but this repository does **not** yet claim that the RAD 700i accepts the same layout. Cobra's own product documentation confirms that Drive Smarter can surface community/location alerts on connected detectors, so this is a high-value capture target rather than a write we should guess.
+- 8-bit threat/location type;
+- distance in feet;
+- 2-bit level;
+- heading in degrees;
+- 1-bit database/source flag.
 
-Toolbox policy: keep `0xAD` blocked until a physical RAD 700i Drive Smarter capture exercises it or an equivalently strong controlled observation confirms the payload.
+Drive Smarter divides heading by two with integer division and packs:
 
+```text
+h = (headingDegrees / 2) & 0xFF
+p0 = threatType & 0x7F
+p1 = (((threatType & 0x80) >> 7) | (distanceFeet << 1)) & 0x7F
+p2 = (distanceFeet >> 6) & 0x7F
+p3 = ((distanceFeet >> 13) | (h << 3)) & 0x7F
+p4 = (((level & 0x03) << 5) | (h >> 4) | ((database & 0x01) << 4)) & 0x7F
+```
+
+The transmitted frame is:
+
+```text
+F5 06 AD p0 p1 p2 p3 p4
+```
+
+The app sends zero-payload `F5 01 AE` for `DISPLAY_CLEAR_LOCATION`.
+
+Drive Smarter itself tests display-capability bit `0x04` before using these calls. The physical RAD 700i returned capability byte `0x07`, so this build marks display-location support true for that session. This is still **not** a physical proof of what the RAD 700i renders. The toolbox keeps both writes blocked until one controlled hardware observation or Drive Smarter capture validates the visible behavior.
+
+
+## Radar-options structure
+
+The exact current-app radar-option surface is:
+
+| ID | Option |
+|---:|---|
+| `00` | ALL request selector |
+| `01` | X Filter |
+| `02` | K Filter |
+| `03` | K Notch |
+| `04` | Wi-Fi Filter |
+| `05` | K Notch 2 |
+| `06` | Ka Notch |
+
+Concrete option values are shared across all six options:
+
+| Value | Meaning |
+|---:|---|
+| `00` | Off |
+| `01` | On |
+| `02` | Low |
+| `03` | Medium |
+| `04` | High |
+
+Drive Smarter parses detector `0xAC` responses as repeated two-byte `<option-id> <value>` records beginning immediately after the F5 command. It parses `0xAE` option-info responses as:
+
+```text
+<option-id> <info-type> [info-values...]
+```
+
+where info type `0` is LIST and `1` is NUMBER. LIST values use the same Off/On/Low/Medium/High enum. The inspected NUMBER path does not reduce the remaining bytes further, so they stay raw.
+
+Drive Smarter requests all options with the physically observed `F5 02 D1 00`. After a response, the app can send `D3 <option-id>` for concrete options whose metadata is missing. The toolbox decodes `AC/AE` passively but continues to block `D3` because no physical RAD 700i D3/AE exchange has been isolated.
+
+## Current-app marker-enable bit map
+
+The marker state is two bytes:
+
+| Byte | Mask | Marker |
+|---:|---:|---|
+| 0 | `01` | Red Light Camera |
+| 0 | `02` | Speed Camera |
+| 0 | `04` | Average Speed Camera |
+| 0 | `08` | Speed Trap |
+| 0 | `10` | Other |
+| 0 | `20` | Camera |
+| 0 | `40` | Strelka |
+| 1 | `01` | Red Light & Speed Camera |
+| 1 | `02` | School Zone |
+| 1 | `04` | HOV Lane Camera |
+| 1 | `08` | Railway Camera |
+| 1 | `10` | Accident Blackspot |
+| 1 | `20` | Air Patrol |
+
+The app's state-changing marker writer is `F5 03 93 <byte0> <byte1>`. That fact is documented but the write remains outside the normal toolbox.
+
+## Current-app turn-by-turn protocol
+
+Drive Smarter contains a separate Cedar turn-by-turn BLE transport:
+
+```text
+service  52AFFC3A-6424-11EC-90D6-0242AC120003
+TX       B5E22DFB-31EE-42AB-BE6A-9BE0837AA344
+RX       B5E22DFC-31EE-42AB-BE6A-9BE0837AA344
+```
+
+Unlike radar traffic, turn-by-turn traffic uses an `AA 55` envelope. Static request values are `01` capabilities, `02` supported maneuvers, `03` maneuver data, and `04` cancel, with `BB 66` ending a frame.
+
+The app's capability request is:
+
+```text
+AA 55 01 00 01 01 00 BB 66
+```
+
+and the supported-maneuver request uses the same shape with command/checksum `02`.
+
+For a command-`01` capability response, the app reads byte 7 as the ETA-support flag, byte 8 as the lane-data-support flag, and byte 9 as maximum road/address text length. A command-`02` response marks maneuver support available.
+
+Maneuver packets include maneuver type/modifier, exit number, distance ×10, distance unit, optional ETA, lane counts, NUL-terminated UTF-8 road text, a 16-bit additive checksum, and `BB 66`. The current maneuver and modifier code tables are documented in the static-analysis note.
+
+This transport has **not** been observed in a physical RAD 700i GATT inventory. It remains static application evidence and is not exposed as a live toolbox writer.
 
 ## Drive Smarter 4.12.0.0 static response map
 
