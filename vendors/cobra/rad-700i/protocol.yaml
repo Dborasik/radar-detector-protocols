@@ -1,6 +1,6 @@
 schema_version: "1.0"
 protocol_id: cobra.rad-700i
-contract_revision: 3
+contract_revision: 4
 
 vendor:
   name: Cobra
@@ -1489,6 +1489,13 @@ messages:
       - The physical RAD 700i frame F5 01 A7 contains no payload in this observation, differing from some older compatible-family comments that annotate one data byte.
 
 hypotheses:
+  - id: drive-smarter-current-response-map
+    confidence: inferred
+    description: Drive Smarter Android 4.12.0.0 contains a centralized radar response-code table covering alert, settings, band, marker, status, authentication, radar-options, update, and related response families. Presence in the app does not imply support by every detector model.
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    test_needed: For commands not already seen on the physical RAD 700i, require a RAD 700i capture or controlled observation before promoting model-specific support.
+
   - id: display-location-five-byte-pack
     confidence: hypothesis
     description: A compatible-family implementation packs client DISPLAY_LOCATION (0xAD) into five 7-bit-safe bytes combining alert type, distance, heading, age, and a database flag.
@@ -1551,6 +1558,14 @@ hypotheses:
     test_needed: Capture notifications during overlapping or multi-signal alerts and check whether byte 0 combines values.
 
 sources:
+  - id: drive-smarter-static-analysis-4-12-0-0
+    type: analysis
+    title: Drive Smarter Android 4.12.0.0 static protocol analysis
+    author: null
+    path: vendors/cobra/rad-700i/analysis/2026-10-05-drive-smarter-4.12.0.0.md
+    accessed: "2026-10-05"
+    notes: Derived protocol symbols and numeric response identifiers from the exact APK build identified by SHA-256 in sources.md. APK/decompiled source is not redistributed. Application-wide evidence only unless independently observed on the RAD 700i.
+
   - id: roadsage-compatible-protocol
     type: public-implementation
     title: RoadSage Escort/Cedar-compatible BLE implementation
@@ -1655,4 +1670,4 @@ notes:
   - The compatible-family DISPLAY_MESSAGE (0x9A) form was transmitted on physical hardware but produced no visible display change, so its RAD 700i semantics remain unresolved.
   - Individual detector-setting semantics, cloud/community alerts, lockout synchronization, and firmware-update behavior remain incomplete.
 
-last_updated: "2026-09-29"
+last_updated: "2026-10-05"
