@@ -1,6 +1,6 @@
 schema_version: "1.0"
 protocol_id: cobra.rad-700i
-contract_revision: 7
+contract_revision: 8
 
 vendor:
   name: Cobra
@@ -627,7 +627,8 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
         notes:
-          - Compatible-family research maps bits 0, 1, and 2 to beep, display-message, and display-location support; those individual semantics were not isolated in this capture.
+          - Compatible-family research maps bits 0, 1, and 2 to beep, display-message, and display-location support.
+          - Current Drive Smarter 4.12 code independently tests bit 0x04 as isDisplayLocationSupported. The physical RAD 700i value 0x07 therefore has that current-app display-location capability bit set, although a visible 0xAD location write has not yet been physically validated.
 
   - id: display-length-response
     transport: ble-main
@@ -1168,7 +1169,7 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
         notes:
-          - "Exact RAD 700i payload observed: 0B 00. Individual bit meanings are not yet mapped."
+          - "Exact RAD 700i payload observed: 0B 00. Drive Smarter 4.12 maps this to Red Light Camera, Speed Camera, and Speed Trap supported bits; the bytes are physical evidence and the bit names are current-app static semantics."
 
   - id: marker-enables-request
     transport: ble-main
@@ -1230,7 +1231,7 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
         notes:
-          - "Exact RAD 700i payload observed: 1B 00. Individual bit meanings are not yet mapped."
+          - "Exact RAD 700i payload observed: 1B 00. Drive Smarter 4.12 maps this to Red Light Camera, Speed Camera, Speed Trap, and Other current bits; Other is set even though it is absent from the observed supported mask, and that discrepancy is preserved."
 
   - id: overspeed-limit-data
     transport: ble-main
@@ -1383,6 +1384,9 @@ messages:
     notes:
       - No deterministic application-level AC response was isolated in the sanitized baseline capture.
       - Current app code constructs getRadarOptions as D1 plus RadarOption.ALL; the physical request establishes ALL = 0x00 for this build.
+      - Current Drive Smarter option IDs are ALL=0, X_FILTER=1, K_FILTER=2, K_NOTCH=3, WIFI_FILTER=4, K_NOTCH_2=5, KA_NOTCH=6.
+      - Current app option values are OFF=0, ON=1, LOW=2, MEDIUM=3, HIGH=4.
+      - AC responses are statically parsed as option/value pairs; AE option-info responses use option ID, info type, and supported-value bytes for LIST type.
       - State-changing D0 RADAR_OPTIONS_SET remains distinct and is not part of this read-only message.
 
   - id: play-tone-request
@@ -1505,12 +1509,13 @@ hypotheses:
     test_needed: For commands not already seen on the physical RAD 700i, require a RAD 700i capture or controlled observation before promoting model-specific support.
 
   - id: display-location-five-byte-pack
-    confidence: hypothesis
-    description: A compatible-family implementation packs client DISPLAY_LOCATION (0xAD) into five 7-bit-safe bytes combining alert type, distance, heading, age, and a database flag.
+    confidence: inferred
+    description: Drive Smarter 4.12.0.0 itself constructs client DISPLAY_LOCATION (0xAD) as five 7-bit-safe payload bytes carrying marked-location/threat type, distance in feet, half-degree heading, two-bit threat level, and one-bit database/user reporter source. It gates this write on display-capability bit 0x04; the physical RAD 700i returned capability byte 0x07, so that bit is advertised on the tested detector. Client DISPLAY_CLEAR_LOCATION is 0xAE.
     evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+      - drive-smarter-capture-2026-09-11
       - roadsage-compatible-protocol
-      - esclib-compatible-protocol
-    test_needed: Capture a real Drive Smarter community/location alert sent to the physical RAD 700i, or reproduce one in a controlled non-persistent test, then compare the exact five-byte payload before exposing this write in the toolbox.
+    test_needed: Capture or deliberately reproduce one visible RAD 700i location/community alert before enabling live 0xAD/0xAE writes. Static construction and capability advertisement do not by themselves prove the display result.
 
   - id: status-embedded-alert-tail
     confidence: hypothesis
@@ -1535,14 +1540,37 @@ hypotheses:
       - drive-smarter-capture-2026-09-11
     test_needed: Treat multi-bit fields as raw masked values until their numeric value semantics are reduced; verify model-specific UI correspondence only when needed.
 
+  - id: drive-smarter-marker-enable-map
+    confidence: inferred
+    description: Drive Smarter 4.12.0.0 maps the two marker-enable bytes to named bit flags. Applying the map to the physical supported mask 0B 00 yields Red Light Camera, Speed Camera, and Speed Trap; applying it to current mask 1B 00 adds Other. The current Other bit is preserved even though it is absent from the observed supported mask.
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+      - drive-smarter-capture-2026-09-11
+    test_needed: Physically toggle/isolate marker categories if model-specific UI confirmation is needed; do not erase the current-vs-supported discrepancy.
+
+  - id: drive-smarter-radar-options-map
+    confidence: inferred
+    description: Current Drive Smarter radar-option IDs are ALL=0, X_FILTER=1, K_FILTER=2, K_NOTCH=3, WIFI_FILTER=4, K_NOTCH_2=5, KA_NOTCH=6. Generic option values are Off=0, On=1, Low=2, Medium=3, High=4. AC responses are parsed as option/value pairs; AE option-info responses use option ID and info type, with LIST=0 values from the remaining bytes, NUMBER=1 defined but not explicitly expanded by this parser, and 0xF4 as unsupported.
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+      - drive-smarter-capture-2026-09-11
+    test_needed: Capture an AC response and any per-option D3/AE exchange on the RAD 700i before treating those response contents as model-observed or enabling live D3 inventory requests.
+
+  - id: drive-smarter-turn-by-turn-family
+    confidence: inferred
+    description: Drive Smarter 4.12.0.0 contains a separate Cedar turn-by-turn BLE transport using service 52affc3a-6424-11ec-90d6-0242ac120003, TX b5e22dfb-31ee-42ab-be6a-9be0837aa344, and RX b5e22dfc-31ee-42ab-be6a-9be0837aa344. Frames use AA55, little-endian length, payload, little-endian checksum, and BB66. The app negotiates capabilities/maneuver support before sending maneuver payloads containing type/icon, exit, distance, units, optional ETA/lane data, and UTF-8 text.
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    test_needed: Enumerate the physical RAD 700i GATT table for the TBT service and capture capability traffic before claiming model support or enabling live navigation writes.
+
   - id: settings-id-map
     confidence: inferred
-    description: Current Drive Smarter 4.12 RadarSetting.Type ordering and getReqvalue-keyed handlers align with the established one-based family IDs and the physically observed RAD 700i setting requests, resolving symbolic names through 0x2C. This names settings but does not automatically promote every numeric value label.
+    description: Current Drive Smarter 4.12 RadarSetting.Type uses request value ordinal+1, aligning with the physically observed RAD 700i setting requests through 0x2C. Current parser/resource arrays also resolve many observed value labels, including Brightness, AutoMute, Voice, Units, Cruise/Over-speed ranges, Language, Display Color, Detail, Screen Saver, Smart Power, Low Voltage Alert, Quiet Drive, K Low Band Enable, and Caution Area. Sensitivity value 0x10 is physically reported but lies outside the current app's 0..10 sensitivity resource array, and AutoLearn lacks a normal value-label array; both remain raw/unresolved rather than guessed.
     evidence:
       - drive-smarter-static-analysis-4-12-0-0
       - drive-smarter-capture-2026-09-11
       - esclib-compatible-protocol
-    test_needed: Physically correlate only value semantics that remain ambiguous; state-changing 0x83 writes remain outside the normal discovery path.
+    test_needed: Physically correlate only the remaining ambiguous values, especially Sensitivity 0x10 and AutoLearn; state-changing 0x83 writes remain outside the normal discovery path.
 
   - id: gps-short-layout
     confidence: hypothesis
@@ -1558,7 +1586,7 @@ sources:
     author: null
     path: vendors/cobra/rad-700i/analysis/2026-10-05-drive-smarter-4.12.0.0.md
     accessed: "2026-10-05"
-    notes: Derived protocol symbols, request/response identifiers, exact alert-record bit extraction and selection behavior, setting-name mapping, radar-options/support query construction, and band-enable byte/mask mappings from the exact APK build identified by SHA-256 in sources.md. APK/decompiled source is not redistributed. Application-wide evidence only unless independently observed on the RAD 700i.
+    notes: Derived protocol symbols, request/response identifiers, exact alert-record bit extraction and selection behavior, setting IDs/value labels, band/marker masks, radar-option IDs/parsers, display-location packing, and turn-by-turn framing/UUIDs from the exact APK build identified by SHA-256 in sources.md. APK/decompiled source is not redistributed. Application-wide evidence only unless independently observed on the RAD 700i.
 
   - id: roadsage-compatible-protocol
     type: public-implementation
@@ -1663,6 +1691,6 @@ notes:
   - PLAY_TONE (0x9B) is now directly confirmed on physical RAD 700i hardware for audible selectors 1 and 2; selector 0 produced no audible output in the same test.
   - The compatible-family DISPLAY_MESSAGE (0x9A) form was transmitted on physical hardware but produced no visible display change, and Drive Smarter 4.12.0.0 does not expose 0x9A in its current RadarRequest enum.
   - PLAY_TONE (0x9B) works on physical RAD 700i hardware for selectors 1 and 2, but 0x9B is likewise absent from the current Drive Smarter RadarRequest enum; treat it as physically supported legacy/family behavior rather than a current-app request.
-  - Individual detector-setting value semantics, cloud/community alerts, lockout synchronization, and firmware-update behavior remain incomplete.
+  - Some detector-setting values remain unresolved (notably Sensitivity 0x10 and AutoLearn); physical active-alert validation, live display-location/TBT support, cloud/community behavior, lockout synchronization, and firmware-update behavior remain incomplete.
 
 last_updated: "2026-10-06"
