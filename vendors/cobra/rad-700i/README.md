@@ -19,8 +19,9 @@ This directory documents the public state of RAD 700i protocol research. The can
 - Periodic detector protocol traffic including no-alert `F5 01 82`, `F5 01 A7`, and variable Status values including `0x0B`.
 - Exact read-only Drive Smarter inventory exchanges for current/supported band masks (`86/8C`, `8C/8F`) and marker masks (`92/97`, `95/9B`).
 - Exact setting IDs queried by Drive Smarter on the tested RAD 700i, including model-specific IDs above the older compatible-family `0x1B` range.
-- Observed but still-unknown client requests `AF` and `D1 00`; `AF` repeatedly precedes detector `AB 00`.
-- Candidate X/K/Ka/Laser/POP alert byte values and signal-strength byte.
+- Drive Smarter 4.12 static-analysis naming for observed `AF` (`DISABLE_ENABLE_RADAR`) and `D1` (`RADAR_OPTIONS_REQUEST`) traffic, while their exact payload/side-effect semantics remain conservative.
+- Current Drive Smarter 4.12 alert record decoder: 4-byte `0x82` and 5-byte `0xA9` records, exact band extraction, frequency assembly, front/rear signal-strength masks, numeric direction extraction, Laser subtype, and lockout flag handling.
+- Current Drive Smarter band-enable byte/mask map, applied to the physically observed RAD 700i current/supported mask.
 - Candidate GPS payload layout.
 
 The 2026-09-11 capture identifies the tested detector as `RAD 700i` and includes a version response containing `M1.2.3.6`.
@@ -29,11 +30,11 @@ The 2026-09-11 capture identifies the tested detector as `RAD 700i` and includes
 
 Among other things:
 
-- Exact radar-frequency representation and richer alert metadata.
+- Physical RAD 700i validation of at least one non-empty active-alert record; the current Drive Smarter application decoder itself is now documented.
 - Determine why the compatible-family `DISPLAY_MESSAGE (0x9A)` format produced no visible display change on the tested RAD 700i.
 - Characterize the exact meanings of `PLAY_TONE (0x9B)` payload values `0`, `1`, and `2`; values `1` and `2` are now audibly confirmed.
 - One-setting-at-a-time mapping from the observed RAD 700i setting IDs to user-facing menu names. The wire IDs/values are now inventoried, but semantic names are not assumed from older models.
-- Bit-level mapping of the observed band and marker masks.
+- Marker-mask bit-level mapping. Band-enable byte/mask mapping is now available from Drive Smarter 4.12; multi-bit value semantics still need reduction where relevant.
 - Mute/lockout/mark synchronization.
 - Defender/community alert exchange.
 - Firmware-update transport and firmware-specific differences.
