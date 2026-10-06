@@ -63,7 +63,7 @@ F5 03 AA 00 00
 F5 02 AB 00
 ```
 
-Compatible-family tables identify `A9` as speed-limit update, `AA` as actual-speed update, and `AB` as overspeed-limit data. The A9/AA payload is represented as two 7-bit chunks by the compatible-family implementation. Exact mph/km/h presentation was not independently varied in this capture, so unit/display semantics remain conservative.
+Current Drive Smarter 4.12 confirms `A9` as posted speed-limit update, `AA` as actual-speed update, and `AB` as overspeed-limit data. A9/AA use the protocol's two 7-bit chunks. The app's overspeed preference path also resolves the observed `AB 00`: OFF is represented internally as `-1` and produces payload `00`; otherwise Drive Smarter derives the threshold in the active unit mode, adds 64, and sends that byte. Exact physical presentation for every nonzero AB value has not been varied on the RAD 700i.
 
 ### Settings synchronization observed
 
@@ -103,7 +103,10 @@ F5 01 A7
 F5 02 99 0B
 ```
 
-For detector-to-client traffic, compatible-family tables identify `0x82` as Alert Response and `0xA7` as an overspeed-warning/data request. On this RAD 700i, `F5 01 82` has zero payload and was observed while no radar alert was active, so the toolbox should treat it as "no active alerts" rather than an unknown radar signal. The physical `A7` frame has zero payload, which differs from some older compatible-family comments that annotate one data byte. Status value `0x0B` is also directly observed; its bit-level meaning remains unknown.
+The baseline Drive Smarter session also directly captured detector `F5 02 A6 03`. Static analysis of this exact app build shows that A6 is a bitmask: bit 0 requests posted speed-limit data and bit 1 requests actual-speed data. Drive Smarter stores only `payload & 0x03`; therefore the physically observed value `03` requests both streams.
+
+
+For detector-to-client traffic, `0x82` is Alert Response and `0xA7` is the overspeed-warning request. On this RAD 700i, `F5 01 82` has zero payload and was observed while no radar alert was active, so the toolbox treats it as "no active alerts" rather than an unknown radar signal. The physical `A7` frame has zero payload. Current Drive Smarter starts a repeating four-second AB overspeed-update job when A7 is received. Status value `0x0B` is also directly observed; its bit-level meaning remains unknown.
 
 ### Not confirmed
 
