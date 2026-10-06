@@ -262,20 +262,122 @@ Exact `8B` metadata/current `8A` values are preserved in the sanitized capture s
 Read-only characterization can now replay only the exact observed inventory requests above. State-changing siblings—`83` setting change, `85` band-enable set, `93` marker-enable set, defaults, lockout, power, flash, firmware, and reset operations—remain outside the toolbox research path.
 
 
-## Candidate display-location packing
+### Marker-enable bit decoding
 
-RoadSage implements the compatible-family client request `DISPLAY_LOCATION (0xAD)` with a five-byte payload. Its packing logic uses seven-bit-safe fields containing:
+Current Drive Smarter 4.12 maps the two marker bytes as follows:
 
-- alert/location type;
-- distance split across multiple bytes;
-- heading represented at half-degree resolution;
-- an age field;
-- a database/source flag.
+```text
+byte 0:
+  01 Red Light Camera
+  02 Speed Camera
+  04 Average Speed Camera
+  08 Speed Trap
+  10 Other
+  20 Camera
+  40 Strelka
 
-The exact bit packing is available in the pinned RoadSage source, but this repository does **not** yet claim that the RAD 700i accepts the same layout. Cobra's own product documentation confirms that Drive Smarter can surface community/location alerts on connected detectors, so this is a high-value capture target rather than a write we should guess.
+byte 1:
+  01 Red Light & Speed Camera
+  02 School Zone
+  04 HOV Lane Camera
+  08 Railway Camera
+  10 Accident Blackspot
+  20 Air Patrol
+```
 
-Toolbox policy: keep `0xAD` blocked until a physical RAD 700i Drive Smarter capture exercises it or an equivalently strong controlled observation confirms the payload.
+The physical RAD 700i returned supported mask `0B 00` and current mask `1B 00`. With the current-app map, supported = Red Light Camera + Speed Camera + Speed Trap, while current additionally has Other set. Preserve that discrepancy as observed data rather than forcing current state to be a subset of the support mask.
 
+### Radar-option packet structure
+
+Current Drive Smarter defines option IDs:
+
+```text
+00 ALL
+01 X_FILTER
+02 K_FILTER
+03 K_NOTCH
+04 WIFI_FILTER
+05 K_NOTCH_2
+06 KA_NOTCH
+```
+
+and option values `0 Off`, `1 On`, `2 Low`, `3 Medium`, `4 High`.
+
+Known/current-app packet construction:
+
+```text
+F5 02 D1 00                 get all options (physically observed request)
+F5 02 D3 <option>           get option information (static app evidence)
+F5 03 D0 <option> <value>   set option (state-changing; blocked)
+```
+
+`0xAC` responses are parsed as repeated `<option> <value>` pairs from F5 frame offset 3. `0xAE` option-information responses use offset 3 option ID, offset 4 info type, and for `LIST=0` the remaining bytes are supported values. `NUMBER=1` exists as an info type but this parser method does not construct numeric metadata for it. `0xF4` is the unsupported sentinel.
+
+Only `D1 00` has direct RAD 700i request evidence. Passive decoding of `AC/AE` can use the current-app structure; live `D3` querying should remain gated from normal use until model-specific evidence exists, and `D0` remains blocked.
+
+
+## Drive Smarter display-location packing
+
+Drive Smarter 4.12 explicitly interprets display-capability bit `0x04` as location-display support. The tested RAD 700i physically returned capability byte `0x07`, so that capability bit is advertised by the detector.
+
+Clear-location current-app construction:
+
+```text
+F5 01 AE
+```
+
+Display-location current-app construction:
+
+```text
+F5 06 AD p0 p1 p2 p3 p4
+```
+
+For threat type `t`, distance in feet `d`, threat level `l`, heading degrees `heading`, reporter/database bit `r`, and `h = (heading / 2) & 0xFF`:
+
+```text
+p0 = t & 0x7F
+p1 = (((t & 0x80) >> 7) | (d << 1)) & 0x7F
+p2 = (d >> 6) & 0x7F
+p3 = ((d >> 13) | (h << 3)) & 0x7F
+p4 = (((l & 3) << 5) | (h >> 4) | ((r & 1) << 4)) & 0x7F
+```
+
+The current app uses Yellow=0, Orange=1, Red=2 for threat level and Database=1, User=0 for reporter type. Negative heading is normalized by adding 360 at the callsite. The write is suppressed if threat type is zero or display-location capability is absent.
+
+This exact construction replaces the former compatible-family-only packing hypothesis. It is strong current-app evidence combined with a physically advertised capability bit, but the repository still has no physical RAD 700i capture of an `AD` write or visible location result. The toolbox should therefore support offline encoding/inspection while keeping live `AD/AE` writes blocked.
+
+Direction matters for `0xAE`: client-to-detector `AE` is display-clear-location; detector-to-client `AE` is radar-options-info response.
+
+
+## Drive Smarter turn-by-turn family
+
+Drive Smarter carries a separate Cedar turn-by-turn transport rather than putting navigation data on the normal F5 radar characteristic. Static UUIDs are:
+
+- service `52affc3a-6424-11ec-90d6-0242ac120003`
+- TX `b5e22dfb-31ee-42ab-be6a-9be0837aa344`
+- RX `b5e22dfc-31ee-42ab-be6a-9be0837aa344`
+
+The frame envelope is:
+
+```text
+AA 55 <length-le16> <payload> <checksum-le16> BB 66
+```
+
+Static simple requests from this build:
+
+```text
+AA 55 01 00 01 01 00 BB 66   capabilities
+AA 55 01 00 02 02 00 BB 66   supported maneuvers
+AA 55 01 00 04 04 00 BB 66   cancel
+```
+
+Maneuver request type is `3`. The app constructs 19 fixed payload bytes followed by UTF-8 primary maneuver text and a NUL terminator. The payload includes maneuver type/icon, exit number, distance×10 as low-16 little-endian, distance unit, optional ETA, optional lane counts, and text. The length field is `UTF8_text_length + 20`. The maneuver checksum is the sum of payload bytes treated unsigned, emitted low-16 little-endian.
+
+Distance units are None=0, Meters=1, Kilometers=2, Feet=3, Miles=4. Maneuver type IDs are Turn=1, New Name=2, Depart=3, Arrive=4, Merge=5, On Ramp=6, Off Ramp=7, Fork=8, End of Road=9, Continue=10, Roundabout=11, Rotary=12, Roundabout Turn=13, Notification=14, Exit Roundabout=15, Exit Rotary=16. Modifier IDs are None=0, U-turn=1, Sharp Right=2, Right=3, Slight Right=4, Straight=5, Slight Left=6, Left=7, Sharp Left=8.
+
+The app first requests TBT capabilities and supported maneuvers. Capability response type `1` uses response byte 7 for ETA support, byte 8 for lane support, and byte 9 for maximum address/text length. Response type `2` marks maneuver support. Maneuver transmission is gated on these responses.
+
+This is exact current-app static evidence only. The sanitized physical RAD 700i evidence does not currently show this TBT service or any TBT packets, so do not enable live navigation writes from this finding alone.
 
 ## Drive Smarter 4.12.0.0 static response map
 
@@ -291,7 +393,7 @@ See [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-
 Static analysis of Drive Smarter 4.12.0.0 now provides the exact current request-command symbols for the major radar protocol operations. Of particular relevance to the RAD 700i capture:
 
 - `0xAF = DISABLE_ENABLE_RADAR` in the request enum, while the detector-query table stores exact `F5 01 AF` as `RADAR_ENABLE_DISABLE_REQUEST`; its paired response is `0xAB RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE`. The toolbox permits only this observed zero-payload read/support query.
-- `0xD1 = RADAR_OPTIONS_REQUEST`; the app's `getRadarOptions` path sends `D1` plus `RadarOption.ALL`. The physical `D1 00` capture therefore establishes `ALL=0x00`. The toolbox permits only this exact read-like form; `D0` writes and unobserved per-option `D3` queries remain blocked.
+- `0xD1 = RADAR_OPTIONS_REQUEST`; the app's `getRadarOptions` path sends `D1` plus `RadarOption.ALL`. The physical `D1 00` capture therefore establishes `ALL=0x00`. Exact option IDs 0–6 and passive `AC/AE` parser layouts are now reduced. The toolbox permits only the physically observed `D1 00` live request; `D0` writes and unobserved per-option `D3` queries remain blocked.
 - `0xAD = DISPLAY_LOCATION` and `0xAE = DISPLAY_CLEAR_LOCATION`, strengthening the current-app relevance of location/community display research.
 - `0xD0 = RADAR_OPTIONS_SET` and `0xD3 = RADAR_OPTIONS_INFORMATION`.
 - the current enum does not expose the older compatible-family arbitrary `DISPLAY_MESSAGE 0x9A` or `PLAY_TONE 0x9B` request symbols.
