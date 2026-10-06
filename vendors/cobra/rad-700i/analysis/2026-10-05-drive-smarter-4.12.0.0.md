@@ -270,10 +270,223 @@ Current Drive Smarter code constructs these packets:
 
 - `getRadarOptions`: `F5 02 D1 <RadarOption.ALL>`; the physical capture is `F5 02 D1 00`, establishing `ALL = 0x00` for this build.
 - `radarOptionSet`: `F5 03 D0 <option> <value>`; this is state-changing.
-- `getRadarOptionInfo`: `F5 02 D3 <option>`; this is read-like in code, but individual option IDs were not needed for the observed RAD 700i capture and are not guessed here.
+- `getRadarOptionInfo`: `F5 02 D3 <option>`; this is read-like in current app code but has not been physically observed on the RAD 700i.
 - detector support query: exact zero-payload `F5 01 AF`, represented by the app's detector request table and paired physically with `F5 02 AB 00`.
 
-The app's generic radar-option filter enum contains `OFF=0`, `ON=1`, `LOW=2`, `MEDIUM=3`, and `HIGH=4`; those values must not be assigned to a specific radar option without the relevant option mapping.
+The exact current-app radar-option IDs are:
+
+| ID | RadarOption |
+|---:|---|
+| `00` | ALL |
+| `01` | X_FILTER |
+| `02` | K_FILTER |
+| `03` | K_NOTCH |
+| `04` | WIFI_FILTER |
+| `05` | K_NOTCH_2 |
+| `06` | KA_NOTCH |
+
+The generic radar-option value enum is:
+
+| Value | Current-app label |
+|---:|---|
+| `00` | Off |
+| `01` | On |
+| `02` | Low |
+| `03` | Medium |
+| `04` | High |
+
+The current app parses `RADAR_OPTIONS_RESPONSE (0xAC)` as repeated `<option-id> <value>` pairs beginning at F5 frame offset 3. It accepts the response only when the total frame length is greater than four bytes, resolves recognized option IDs through the table above, and resolves recognized values through the Off/On/Low/Medium/High enum.
+
+The current app parses `RADAR_OPTIONS_INFO_RESPONSE (0xAE)` with:
+
+- F5 frame offset 3: radar option ID;
+- offset 4: info type;
+- info type `0 = LIST`;
+- info type `1 = NUMBER`;
+- for `LIST`, bytes from offset 5 onward are supported values filtered against the option's allowed value enum;
+- single-byte value `0xF4` is treated as the unsupported sentinel.
+
+The current parser contains no explicit value-list construction for `NUMBER` in this method. Do not invent numeric-range semantics for that case.
+
+Only `D1 00` has direct RAD 700i request evidence. `D3 <option>` is sufficiently reduced for passive/offline modeling but should remain out of the toolbox's default live inventory until directly observed or otherwise model-validated. `D0` remains blocked because it changes detector state.
+
+## Marker-enable bitfield model
+
+Drive Smarter 4.12.0.0 exposes the exact two-byte marker-enable map:
+
+| Marker | Byte index | Mask |
+|---|---:|---:|
+| Red Light Camera | 0 | `0x01` |
+| Speed Camera | 0 | `0x02` |
+| Average Speed Camera | 0 | `0x04` |
+| Speed Trap | 0 | `0x08` |
+| Other | 0 | `0x10` |
+| Camera | 0 | `0x20` |
+| Strelka | 0 | `0x40` |
+| Red Light & Speed Camera | 1 | `0x01` |
+| School Zone | 1 | `0x02` |
+| HOV Lane Camera | 1 | `0x04` |
+| Railway Camera | 1 | `0x08` |
+| Accident Blackspot | 1 | `0x10` |
+| Air Patrol | 1 | `0x20` |
+
+The current parser indexes each marker at `frame[3 + byteIndex]` and tests `(value & mask) == mask`. Applying that exact application map to the physical RAD 700i capture:
+
+- supported mask `0B 00`: Red Light Camera, Speed Camera, Speed Trap;
+- current mask `1B 00`: Red Light Camera, Speed Camera, Speed Trap, Other.
+
+The bytes are direct physical evidence. Their names/bit positions are current-app static semantics. The apparent current `Other` bit outside the supported mask should be preserved as observed rather than normalized away.
+
+## Display-location encoding
+
+Drive Smarter 4.12 explicitly interprets display-capability bit `0x04` as display-location support. The physical RAD 700i returns display capability byte `0x07`, so that bit is set on the tested detector. This establishes capability advertisement; it does not yet physically prove a visible `DISPLAY_LOCATION` result.
+
+The current app sends clear-location only when that capability flag is set:
+
+```text
+F5 01 AE
+```
+
+For `DISPLAY_LOCATION (0xAD)`, the app accepts five logical inputs:
+
+- threat type: one byte / marked-location identifier;
+- distance in feet;
+- threat level: current app protocol IDs Yellow=0, Orange=1, Red=2;
+- heading in degrees, with negative heading normalized by adding 360 at the callsite;
+- reporter/database bit: Database=1, User=0.
+
+If `h = (heading_degrees / 2) & 0xFF`, the five 7-bit-safe payload bytes are:
+
+```text
+p0 = threat_type & 0x7F
+p1 = (((threat_type & 0x80) >> 7) | (distance_feet << 1)) & 0x7F
+p2 = (distance_feet >> 6) & 0x7F
+p3 = ((distance_feet >> 13) | (h << 3)) & 0x7F
+p4 = (((threat_level & 0x03) << 5) | (h >> 4) | ((reporter_id & 0x01) << 4)) & 0x7F
+```
+
+The resulting frame is:
+
+```text
+F5 06 AD p0 p1 p2 p3 p4
+```
+
+The app suppresses the write when threat type is zero or display-location capability is absent. This replaces the previous compatible-family-only packing hypothesis with exact current Drive Smarter construction. Live RAD 700i use remains unvalidated, so normal toolbox hardware writes should stay blocked.
+
+Direction matters for opcode `0xAE`: client-to-detector `0xAE` is `DISPLAY_CLEAR_LOCATION`, while detector-to-client `0xAE` is `RADAR_OPTIONS_INFO_RESPONSE`.
+
+## Turn-by-turn protocol family
+
+Drive Smarter carries a separate Cedar turn-by-turn BLE transport:
+
+- service: `52AFFC3A-6424-11EC-90D6-0242AC120003`;
+- TX: `B5E22DFB-31EE-42AB-BE6A-9BE0837AA344`;
+- RX: `B5E22DFC-31EE-42AB-BE6A-9BE0837AA344`.
+
+These UUIDs and packet builders are exact current-app static evidence, but this repository has not observed them on the physical RAD 700i. They are therefore application-family evidence, not a claimed RAD 700i capability.
+
+The TBT frame envelope is:
+
+```text
+AA 55 <length-le16> <payload> <checksum-le16> BB 66
+```
+
+For the simple one-byte requests in this build, the app constructs:
+
+```text
+AA 55 01 00 01 01 00 BB 66   capabilities request
+AA 55 01 00 02 02 00 BB 66   supported-maneuvers request
+AA 55 01 00 04 04 00 BB 66   cancel request
+```
+
+The checksum helper used for these request forms sums payload bytes. The maneuver builder sums payload bytes as unsigned values and emits the low 16 bits little-endian.
+
+The current maneuver request type is `3`. Its logical payload consists of 19 fixed bytes followed by a UTF-8 maneuver text string and a NUL terminator. The app sets the 16-bit frame length to `text_utf8_length + 20`.
+
+Fixed maneuver payload fields, in order:
+
+1. request type `3`;
+2. maneuver type;
+3. reserved zero;
+4. detailed maneuver/icon code;
+5. reserved zero;
+6. exit number;
+7. reserved zero;
+8. maneuver-modifier-3 value (currently zero);
+9. reserved zero;
+10-11. distance times 10, low 16 bits, little-endian;
+12. distance unit;
+13. ETA hours when supported, otherwise zero;
+14. ETA minutes when supported, otherwise zero;
+15. ETA seconds when supported, otherwise zero;
+16-17. lane count, low 16 bits little-endian when supported;
+18-19. active-lane count, low 16 bits little-endian when supported;
+20+. primary maneuver text in UTF-8 plus NUL.
+
+Distance-unit values:
+
+| Value | Unit |
+|---:|---|
+| 0 | None |
+| 1 | Meters |
+| 2 | Kilometers |
+| 3 | Feet |
+| 4 | Miles |
+
+Maneuver-type values:
+
+| Value | Type |
+|---:|---|
+| 1 | Turn |
+| 2 | New name |
+| 3 | Depart |
+| 4 | Arrive |
+| 5 | Merge |
+| 6 | On ramp |
+| 7 | Off ramp |
+| 8 | Fork |
+| 9 | End of road |
+| 10 | Continue |
+| 11 | Roundabout |
+| 12 | Rotary |
+| 13 | Roundabout turn |
+| 14 | Notification |
+| 15 | Exit roundabout |
+| 16 | Exit rotary |
+
+Modifier values are `None=0`, `U-turn=1`, `Sharp right=2`, `Right=3`, `Slight right=4`, `Straight=5`, `Slight left=6`, `Left=7`, and `Sharp left=8`.
+
+The app parses TBT response discriminator byte 4. Response type `1` carries capability data: byte 7 enables ETA, byte 8 enables lane data, and byte 9 is the maximum address/text length. Response type `2` marks maneuver support. The app waits for these capability responses before sending maneuver data.
+
+No live turn-by-turn packet should be enabled for the RAD 700i solely from this static evidence.
+
+## Setting value semantics for physically observed IDs
+
+The setting request byte is definitively `ordinal + 1` in the current `RadarSetting.Type` implementation. For several physically queried settings, the current app's parser and resource arrays also give exact value labels. These labels are static application semantics applied to physically observed raw values; they are not equivalent to separately toggling every value on the detector.
+
+| ID | Setting | Current-app value semantics relevant to capture | Physical current |
+|---:|---|---|---:|
+| `02` | Brightness | 0 Full dark, 1 Minimum, 2 Medium, 3 Maximum, 4 Auto, 5 Last | `01` = Minimum |
+| `07` | AutoMute | 0 Off, 1 On, 2 Low, 3 Medium, 4 High | `01` = On |
+| `0A` | Voice | two-state current-app enumeration: 0 Off, 1 On | `01` = On |
+| `0E` | Units | 0 Imperial, 1 Metric | `00` = Imperial |
+| `13` | Cruise alert | numeric 20–160 step 5 plus synthetic Off | `00` = Off |
+| `14` | Over speed alert | numeric 20–160 step 5 plus synthetic Off | `00` = Off |
+| `15` | Language | 0 English, 1 Spanish, 2 Russian, 3 Chinese | `00` = English |
+| `16` | Display color | 0 Amber, 1 Red, 2 Green, 3 Blue, 4 Copper, 5 Orange, 6 Yellow, 7 White | `01` = Red |
+| `24` | Detail | 0 Less, 1 More | `01` = More |
+| `25` | Screen saver | 0 Off, 1 1 Minute, 2 2 Minutes, 3 3 Minutes | `01` = 1 Minute |
+| `26` | Smart power | two-state current-app enumeration: 0 Off, 1 On | `00` = Off |
+| `28` | Low voltage alert | two-state current-app enumeration: 0 Off, 1 On | `00` = Off |
+| `29` | Quiet drive | two-state current-app enumeration: 0 Off, 1 On | `00` = Off |
+| `2B` | K low band enable | two-state current-app enumeration: 0 Off, 1 On | `00` = Off |
+| `2C` | Caution area | two-state current-app enumeration: 0 Off, 1 On | `01` = On |
+
+Important exceptions:
+
+- Sensitivity (`01`) uses a current-app resource array whose indices 0–10 are Auto, AutoNoX, City, CityLoX, CityNoX, Highway, AutoLoK, Low, Medium, High, Extreme. The physical RAD 700i reports supported/current value `0x10` (decimal 16), which is outside that array. Therefore `0x10` remains unresolved and must **not** be mislabeled as Extreme (Extreme is decimal 10 / `0x0A`).
+- AutoLearn (`10`) has physical `0/1` bytes, but its current handler does not provide a normal value-label array in this build. Preserve the raw value rather than assuming Off/On.
+- `0xF4` is the current parser's unsupported-setting sentinel.
 
 ## Band-enable bitfield model
 
@@ -318,7 +531,9 @@ The current parser also establishes:
 - `BLUETOOTH_PROTOCOL_UNLOCK_REQUEST/RESPONSE` use total frame length 13, matching command plus 10-byte challenge/response;
 - `BLUETOOTH_SERIAL_NUMBER_RESPONSE (0xA5)` uses total frame length 11 and decodes its payload as UTF-8;
 - `STATUS_RESPONSE (0x99)` is accepted at length >=4, but Drive Smarter 4.12 constructs its status object from only the first payload byte;
-- model-info type byte `0x03` maps to `COBRA`, which agrees with the captured physical RAD 700i model response beginning with `03`.
+- model-info type byte `0x03` maps to `COBRA`, which agrees with the captured physical RAD 700i model response beginning with `03`;
+- the managed-code/static inspection found no current `DISPLAY_MESSAGE (0x9A)` or `PLAY_TONE (0x9B)` request symbol, consistent with treating those as legacy/family behavior even though Tone 1/2 work physically;
+- a broad string scan of the supplied ARM64 split did not reveal an obvious native Cobra/Escort detector-protocol command path; this is a negative search result, not proof that native code can never participate.
 
 The fact that Drive Smarter 4.12 ignores Status bytes after the first weakens the relevance of older compatible-family "Status-embedded A9 alert tail" behavior for this app version. Longer tails should still be preserved as raw data if encountered, but not preferentially decoded as alerts without physical evidence.
 
