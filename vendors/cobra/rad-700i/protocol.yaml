@@ -1,6 +1,6 @@
 schema_version: "1.0"
 protocol_id: cobra.rad-700i
-contract_revision: 5
+contract_revision: 6
 
 vendor:
   name: Cobra
@@ -1460,7 +1460,7 @@ messages:
           - toolbox-observations-2026-09-29
     notes:
       - F5 01 82 was repeatedly observed while no active alert was present and is therefore treated as a no-active-alert frame on the tested unit.
-      - Drive Smarter 4.12.0.0 statically parses non-empty 0x82 payloads as 4-byte alert records; that active-alert layout is still not physically captured from the RAD 700i.
+      - Drive Smarter 4.12.0.0 statically parses non-empty 0x82 payloads as 4-byte alert records and exposes exact band/frequency/strength/lockout bit extraction; that active-alert layout is still not physically captured from the RAD 700i.
 
   - id: overspeed-warning-request
     transport: ble-main
@@ -1516,29 +1516,20 @@ hypotheses:
       - drive-smarter-static-analysis-4-12-0-0
     test_needed: Preserve any longer physical RAD 700i Status 0x99 frame as raw data. Promote an embedded-alert interpretation only if a physical capture directly correlates it.
 
-  - id: alert-a9-compatible-band-direction-map
-    confidence: hypothesis
-    description: Public Max 360 injection research maps the A9 band byte into repeating band families and maps direction/strength values 0x00-0x7F into none/front/rear/side blocks plus five signal-strength levels.
-    evidence:
-      - max360-serial-research
-    test_needed: Capture physical RAD 700i A9 alert records while recording the detector's displayed band and strength; compare multiple strengths and, where the model exposes it, direction.
-
-  - id: alert-frequency-14bit-wrap
-    confidence: hypothesis
-    description: The two A9 frequency bytes may form a 14-bit value from two 7-bit chunks, with X using the raw value, K unwrapped by adding 0x4000, and Ka unwrapped by adding 0x8000 to obtain candidate MHz.
-    evidence:
-      - max360-serial-research
-      - esclib-compatible-protocol
-    test_needed: Compare candidate decoded MHz against the physical RAD 700i displayed frequency across at least two known X/K/Ka alerts before promoting the formula.
-
-  - id: alert-front-rear-five-byte-fields
-    confidence: hypothesis
-    description: Drive Smarter 4.12.0.0 confirms A9 is parsed as five bytes per alert record; compatible-family research proposes those five bytes encode two frequency bytes, a band byte, a direction/strength byte, and one additional changing byte. Field meanings remain hypotheses.
+  - id: drive-smarter-alert-record-decoder
+    confidence: inferred
+    description: Drive Smarter Android 4.12.0.0 decodes 0x82 as 4-byte alert records and 0xA9 as 5-byte front/rear alert records. Band is extracted from bits 2-4 plus bit 6 of byte 2; frequency combines two 7-bit bytes plus bits 0-1 of byte 2; signal strength uses the low five bits of byte 3 and, for A9, byte 4; A9 direction is a three-bit numeric code assembled from byte 3 bits 5-6 and byte 4 bit 5.
     evidence:
       - drive-smarter-static-analysis-4-12-0-0
-      - max360-serial-research
-      - esclib-compatible-protocol
-    test_needed: Capture a physical RAD 700i A9 alert while recording the detector's displayed band, exact frequency, signal strength, and direction if available; repeat across bands and strengths.
+    test_needed: Capture at least one physical RAD 700i active alert and correlate the decoded application fields with the detector display to establish model-specific use. Additional bands improve coverage but are not required to establish the app-family decoder.
+
+  - id: drive-smarter-band-enable-map
+    confidence: inferred
+    description: Drive Smarter 4.12.0.0 maps named radar options to byte-index/mask fields across the band-enable response. Applying that map to the physically observed RAD 700i mask 27 00 00 00 06 yields set fields for X Band, K Band, Ka Band Superwide, Laser, MultaRadar CD, and MultaRadar CT; byte-index-5 options are unavailable in this five-byte response.
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+      - drive-smarter-capture-2026-09-11
+    test_needed: Treat multi-bit fields as raw masked values until their numeric value semantics are reduced; verify model-specific UI correspondence only when needed.
 
   - id: settings-id-map
     confidence: hypothesis
@@ -1556,13 +1547,6 @@ hypotheses:
       - car-hud-implementation
     test_needed: Capture raw GPS characteristic notifications with known coordinates and compare payload lengths and decoded values across GPS lock states.
 
-  - id: alert-band-bitfield
-    confidence: unknown
-    description: The band-code values are powers of two, but the seed implementation treats byte 0 as a single enum. It is unknown whether combined values are valid bit flags.
-    evidence:
-      - car-hud-implementation
-    test_needed: Capture notifications during overlapping or multi-signal alerts and check whether byte 0 combines values.
-
 sources:
   - id: drive-smarter-static-analysis-4-12-0-0
     type: analysis
@@ -1570,7 +1554,7 @@ sources:
     author: null
     path: vendors/cobra/rad-700i/analysis/2026-10-05-drive-smarter-4.12.0.0.md
     accessed: "2026-10-05"
-    notes: Derived protocol symbols and numeric response identifiers from the exact APK build identified by SHA-256 in sources.md. APK/decompiled source is not redistributed. Application-wide evidence only unless independently observed on the RAD 700i.
+    notes: Derived protocol symbols, request/response identifiers, exact alert-record bit extraction, and band-enable byte/mask mappings from the exact APK build identified by SHA-256 in sources.md. APK/decompiled source is not redistributed. Application-wide evidence only unless independently observed on the RAD 700i.
 
   - id: roadsage-compatible-protocol
     type: public-implementation
