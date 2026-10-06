@@ -37,7 +37,7 @@ Among other things:
 - Physical RAD 700i validation of at least one non-empty active-alert record; the current Drive Smarter application decoder itself is now documented.
 - Determine why the compatible-family `DISPLAY_MESSAGE (0x9A)` format produced no visible display change on the tested RAD 700i.
 - Characterize the exact meanings of `PLAY_TONE (0x9B)` payload values `0`, `1`, and `2`; values `1` and `2` are now audibly confirmed.
-- Physical correlation of detector-returned setting **value** semantics where the current Drive Smarter setting name is known but the numeric value labels are not independently isolated.
+- Physical one-setting-at-a-time confirmation of the current app's value labels where desired. Most list/range labels are now statically resolved from Drive Smarter 4.12; Sensitivity raw value `0x10` remains genuinely unmapped by the current app table.
 - Physical RAD 700i capture of a concrete `0xAC` radar-options response and any needed `D3/AE` metadata exchange; the current-app parser/IDs are now known.
 - Physical validation of `DISPLAY_LOCATION` rendering and the threat/location type semantics used for Defender/community alerts.
 - Physical GATT confirmation of the Drive Smarter turn-by-turn service and, if present, controlled validation of capabilities/maneuver frames.
