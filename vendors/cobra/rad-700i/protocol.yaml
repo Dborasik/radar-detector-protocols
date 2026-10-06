@@ -1,6 +1,6 @@
 schema_version: "1.0"
 protocol_id: cobra.rad-700i
-contract_revision: 4
+contract_revision: 5
 
 vendor:
   name: Cobra
@@ -1271,12 +1271,12 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
 
-  - id: unknown-af-request
+  - id: radar-enable-disable-request
     transport: ble-main
     endpoint: tx-characteristic
     direction: client-to-detector
     confidence: observed
-    description: Zero-payload client request with unknown semantics.
+    description: Zero-payload client request named DISABLE_ENABLE_RADAR by Drive Smarter 4.12.0.0 static analysis; exact zero-payload semantics remain unresolved.
     minimum_length: 3
     evidence:
       - drive-smarter-capture-2026-09-11
@@ -1289,21 +1289,22 @@ messages:
         confidence: observed
         values:
           "0xAF":
-            meaning: Unknown client request
-            confidence: unknown
+            meaning: DISABLE_ENABLE_RADAR application symbol; exact zero-payload operation unresolved
+            confidence: inferred
             evidence:
               - drive-smarter-capture-2026-09-11
+              - drive-smarter-static-analysis-4-12-0-0
         evidence:
           - drive-smarter-capture-2026-09-11
     notes:
       - In two sessions this was followed by detector frame F5 02 AB 00.
 
-  - id: unknown-ab-response
+  - id: radar-enable-disable-support-response
     transport: ble-main
     endpoint: alert-characteristic
     direction: detector-to-client
     confidence: observed
-    description: One-byte response repeatedly following the observed 0xAF request; semantics unknown.
+    description: One-byte response repeatedly following the observed 0xAF request; Drive Smarter 4.12.0.0 names response 0xAB RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE.
     minimum_length: 4
     evidence:
       - drive-smarter-capture-2026-09-11
@@ -1316,10 +1317,11 @@ messages:
         confidence: observed
         values:
           "0xAB":
-            meaning: Unknown detector response
-            confidence: unknown
+            meaning: RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE
+            confidence: inferred
             evidence:
               - drive-smarter-capture-2026-09-11
+              - drive-smarter-static-analysis-4-12-0-0
         evidence:
           - drive-smarter-capture-2026-09-11
       - name: value
@@ -1337,12 +1339,12 @@ messages:
         evidence:
           - drive-smarter-capture-2026-09-11
 
-  - id: unknown-d1-request
+  - id: radar-options-request
     transport: ble-main
     endpoint: tx-characteristic
     direction: client-to-detector
     confidence: observed
-    description: One-byte client request observed in separate Drive Smarter sessions; semantics unknown.
+    description: One-byte client request observed in separate Drive Smarter sessions; Drive Smarter 4.12.0.0 names 0xD1 RADAR_OPTIONS_REQUEST.
     minimum_length: 4
     evidence:
       - drive-smarter-capture-2026-09-11
@@ -1355,10 +1357,11 @@ messages:
         confidence: observed
         values:
           "0xD1":
-            meaning: Unknown client request
-            confidence: unknown
+            meaning: RADAR_OPTIONS_REQUEST
+            confidence: inferred
             evidence:
               - drive-smarter-capture-2026-09-11
+              - drive-smarter-static-analysis-4-12-0-0
         evidence:
           - drive-smarter-capture-2026-09-11
       - name: value
@@ -1377,6 +1380,7 @@ messages:
           - drive-smarter-capture-2026-09-11
     notes:
       - No deterministic application-level response was isolated.
+      - Static analysis names the command but does not yet establish the meaning of observed payload 0x00, so the toolbox does not replay it.
 
   - id: play-tone-request
     transport: ble-main
@@ -1456,7 +1460,7 @@ messages:
           - toolbox-observations-2026-09-29
     notes:
       - F5 01 82 was repeatedly observed while no active alert was present and is therefore treated as a no-active-alert frame on the tested unit.
-      - Compatible-family research describes non-empty 0x82 payloads as 4-byte records per alert; that non-empty RAD 700i layout is not yet physically captured.
+      - Drive Smarter 4.12.0.0 statically parses non-empty 0x82 payloads as 4-byte alert records; that active-alert layout is still not physically captured from the RAD 700i.
 
   - id: overspeed-warning-request
     transport: ble-main
@@ -1506,10 +1510,11 @@ hypotheses:
 
   - id: status-embedded-alert-tail
     confidence: hypothesis
-    description: Compatible-family status responses may append an A9 front/rear alert record after the first status byte.
+    description: Older compatible-family status responses may append an A9 front/rear alert record after the first status byte. Drive Smarter 4.12.0.0 accepts longer status frames but constructs its status object from only the first payload byte, so this is not preferred current-app behavior.
     evidence:
       - esclib-compatible-protocol
-    test_needed: Capture a physical RAD 700i Status 0x99 frame during an active alert and check whether bytes after the state byte begin with 0xA9 and correlate with the simultaneous alert notification/display.
+      - drive-smarter-static-analysis-4-12-0-0
+    test_needed: Preserve any longer physical RAD 700i Status 0x99 frame as raw data. Promote an embedded-alert interpretation only if a physical capture directly correlates it.
 
   - id: alert-a9-compatible-band-direction-map
     confidence: hypothesis
@@ -1528,8 +1533,9 @@ hypotheses:
 
   - id: alert-front-rear-five-byte-fields
     confidence: hypothesis
-    description: Compatible-family A9 alert records may encode two frequency bytes, a band byte, a direction/strength byte, and one additional changing byte.
+    description: Drive Smarter 4.12.0.0 confirms A9 is parsed as five bytes per alert record; compatible-family research proposes those five bytes encode two frequency bytes, a band byte, a direction/strength byte, and one additional changing byte. Field meanings remain hypotheses.
     evidence:
+      - drive-smarter-static-analysis-4-12-0-0
       - max360-serial-research
       - esclib-compatible-protocol
     test_needed: Capture a physical RAD 700i A9 alert while recording the detector's displayed band, exact frequency, signal strength, and direction if available; repeat across bands and strengths.
@@ -1667,7 +1673,8 @@ notes:
   - This entry distinguishes direct RAD 700i observations from compatible-family semantic corroboration.
   - F5 framing and the observed authentication/status/speed command IDs are directly evidenced on a physical RAD 700i.
   - PLAY_TONE (0x9B) is now directly confirmed on physical RAD 700i hardware for audible selectors 1 and 2; selector 0 produced no audible output in the same test.
-  - The compatible-family DISPLAY_MESSAGE (0x9A) form was transmitted on physical hardware but produced no visible display change, so its RAD 700i semantics remain unresolved.
+  - The compatible-family DISPLAY_MESSAGE (0x9A) form was transmitted on physical hardware but produced no visible display change, and Drive Smarter 4.12.0.0 does not expose 0x9A in its current RadarRequest enum.
+  - PLAY_TONE (0x9B) works on physical RAD 700i hardware for selectors 1 and 2, but 0x9B is likewise absent from the current Drive Smarter RadarRequest enum; treat it as physically supported legacy/family behavior rather than a current-app request.
   - Individual detector-setting semantics, cloud/community alerts, lockout synchronization, and firmware-update behavior remain incomplete.
 
 last_updated: "2026-10-05"
