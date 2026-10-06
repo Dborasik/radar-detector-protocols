@@ -1690,6 +1690,14 @@ hypotheses:
       - roadsage-compatible-protocol
     test_needed: Capture or deliberately reproduce one RAD 700i location/community alert and compare the detector display with the exact app-packed payload before enabling the live write.
 
+  - id: drive-smarter-setting-value-labels
+    confidence: inferred
+    description: The exact Drive Smarter 4.12 resource tables and setting parser resolve most list/range labels returned in the physical RAD 700i settings inventory. Examples include Brightness 00/01/02/03 = Full dark/Minimum/Medium/Maximum, Units 00/01 = Imperial/Metric, Detail 00/01 = Less/More, Screen Saver 00/01/03 = Off/1 Minute/3 Minute, Display Color 07/02/03/01/06 = White/Green/Blue/Red/Yellow, and Off/On labels for the observed high-ID toggles. Sensitivity raw 0x10 remains intentionally unmapped because the current app sensitivity table has no index 16.
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+      - drive-smarter-capture-2026-09-11
+    test_needed: Controlled one-setting-at-a-time changes can independently validate app-derived labels if desired; specifically isolate the detector's Sensitivity value 0x10 before assigning it a name.
+
   - id: drive-smarter-radar-options-layout
     confidence: inferred
     description: Current Drive Smarter parses 0xAC payloads as repeated option/value pairs for X Filter, K Filter, K Notch, Wi-Fi Filter, K Notch 2, and Ka Notch; values are Off, On, Low, Medium, or High. 0xAE carries option information with LIST or NUMBER metadata types.
@@ -1864,6 +1872,6 @@ notes:
   - PLAY_TONE (0x9B) is now directly confirmed on physical RAD 700i hardware for audible selectors 1 and 2; selector 0 produced no audible output in the same test.
   - The compatible-family DISPLAY_MESSAGE (0x9A) form was transmitted on physical hardware but produced no visible display change, and Drive Smarter 4.12.0.0 does not expose 0x9A in its current RadarRequest enum.
   - PLAY_TONE (0x9B) works on physical RAD 700i hardware for selectors 1 and 2, but 0x9B is likewise absent from the current Drive Smarter RadarRequest enum; treat it as physically supported legacy/family behavior rather than a current-app request.
-  - Individual detector-setting value semantics, physical display-location/community-alert behavior, physical turn-by-turn support, lockout synchronization, and firmware-update behavior remain incomplete.
+  - Physical confirmation of app-derived detector-setting labels is still incomplete, and Sensitivity raw value 0x10 remains unmapped. Physical display-location/community-alert behavior, physical turn-by-turn support, lockout synchronization, and firmware-update behavior also remain incomplete.
 
 last_updated: "2026-10-06"
