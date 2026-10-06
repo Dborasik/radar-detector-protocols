@@ -1,5 +1,24 @@
 # Sources and provenance
 
+## Drive Smarter Android inspection target — 2026-10-05
+
+Installed package: `com.cedarelectronics.smartsight`  
+Version name: `4.12.0.0`  
+Version code: `614`  
+Minimum SDK: `28`  
+Target SDK: `36`
+
+APK components and SHA-256:
+
+| Component | SHA-256 |
+|---|---|
+| `base.apk` | `6951b46b91c875a5fdb295839c1e21459728a98eb235f70cadc5651d444e6395` |
+| `split_config.arm64_v8a.apk` | `111cc0aeb153ec6453e4364f043813018ded1d86c06e3b1daf894889417ef2bf` |
+| `split_config.xxhdpi.apk` | `3ac70be349b239a34a6d9a2b39b651a8a022b427ec0349614a883d18e8aff8d4` |
+
+These hashes identify the exact publicly distributed Android build used for static protocol research. The APKs and decompiled application source are **not** committed to this repository. Any protocol findings derived from inspection must be documented as behavior/structure, with independent physical-capture validation where possible, rather than copying proprietary implementation code.
+
+
 ## `drive-smarter-capture-2026-09-11`
 
 Sanitized evidence summary: [`captures/2026-09-11-drive-smarter-session.md`](captures/2026-09-11-drive-smarter-session.md)
