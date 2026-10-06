@@ -1291,7 +1291,7 @@ messages:
         values:
           "0xAF":
             meaning: Radar enable/disable support query
-            confidence: observed
+            confidence: inferred
             evidence:
               - drive-smarter-capture-2026-09-11
               - drive-smarter-static-analysis-4-12-0-0
@@ -1375,7 +1375,7 @@ messages:
         values:
           "0x00":
             meaning: RadarOption.ALL in Drive Smarter 4.12.0.0
-            confidence: observed
+            confidence: inferred
             evidence:
               - drive-smarter-capture-2026-09-11
         evidence:
@@ -1663,6 +1663,6 @@ notes:
   - PLAY_TONE (0x9B) is now directly confirmed on physical RAD 700i hardware for audible selectors 1 and 2; selector 0 produced no audible output in the same test.
   - The compatible-family DISPLAY_MESSAGE (0x9A) form was transmitted on physical hardware but produced no visible display change, and Drive Smarter 4.12.0.0 does not expose 0x9A in its current RadarRequest enum.
   - PLAY_TONE (0x9B) works on physical RAD 700i hardware for selectors 1 and 2, but 0x9B is likewise absent from the current Drive Smarter RadarRequest enum; treat it as physically supported legacy/family behavior rather than a current-app request.
-  - Individual detector-setting semantics, cloud/community alerts, lockout synchronization, and firmware-update behavior remain incomplete.
+  - Individual detector-setting value semantics, cloud/community alerts, lockout synchronization, and firmware-update behavior remain incomplete.
 
-last_updated: "2026-10-05"
+last_updated: "2026-10-06"
