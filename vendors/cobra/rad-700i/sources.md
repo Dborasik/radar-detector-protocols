@@ -14,7 +14,6 @@ APK components and SHA-256:
 |---|---|
 | `base.apk` | `6951b46b91c875a5fdb295839c1e21459728a98eb235f70cadc5651d444e6395` |
 | `split_config.arm64_v8a.apk` | `111cc0aeb153ec6453e4364f043813018ded1d86c06e3b1daf894889417ef2bf` |
-
 | `split_config.xxhdpi.apk` | `3ac70be349b239a34a6d9a2b39b651a8a022b427ec0349614a883d18e8aff8d4` |
 
 Additional local analysis bundles used to reproduce this pass (not committed):
