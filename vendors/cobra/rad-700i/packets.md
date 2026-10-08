@@ -106,7 +106,15 @@ F5 02 99 0B
 The baseline Drive Smarter session also directly captured detector `F5 02 A6 03`. Static analysis of this exact app build shows that A6 is a bitmask: bit 0 requests posted speed-limit data and bit 1 requests actual-speed data. Drive Smarter stores only `payload & 0x03`; therefore the physically observed value `03` requests both streams.
 
 
-For detector-to-client traffic, `0x82` is Alert Response and `0xA7` is the overspeed-warning request. On this RAD 700i, `F5 01 82` has zero payload and was observed while no radar alert was active, so the toolbox treats it as "no active alerts" rather than an unknown radar signal. The physical `A7` frame has zero payload. Current Drive Smarter starts a repeating four-second AB overspeed-update job when A7 is received. Status value `0x0B` is also directly observed; its bit-level meaning remains unknown.
+For detector-to-client traffic, `0x82` is Alert Response and `0xA7` is the overspeed-warning request. On this RAD 700i, `F5 01 82` has zero payload and was observed while no radar alert was active, so the toolbox treats it as "no active alerts" rather than an unknown radar signal. The physical `A7` frame has zero payload. Current Drive Smarter starts a repeating four-second AB overspeed-update job when A7 is received.
+
+Current Drive Smarter resolves the known Status bits as:
+
+- `0x01` detector communicating;
+- `0x02` detector powered;
+- `0x04` detector muted.
+
+The physical `0x03` status is therefore communicating + powered, with mute clear. The physical `0x0B` status is communicating + powered + unresolved bit `0x08`, with mute clear. Bits `0x08` and above remain raw until independently reduced.
 
 ### Not confirmed
 
@@ -266,6 +274,70 @@ IDs `13 Cruise alert` and `14 Over speed alert` returned `14 A0 05`; the current
 
 Read-only characterization can now replay only the exact observed inventory requests above. State-changing siblings—`83` setting change, `85` band-enable set, `93` marker-enable set, defaults, lockout, power, flash, firmware, and reset operations—remain outside the toolbox research path.
 
+### Current-app state-changing/control packet shapes
+
+Static analysis of Drive Smarter 4.12 resolves these exact client packet shapes:
+
+```text
+LOCK active alert       F5 01 80
+UNLOCK active alert     F5 01 81
+SETTING_CHANGE          F5 03 83 <setting-id> <value>
+BAND_ENABLES_SET        F5 <mask-length+1> 85 <mask bytes...>
+MARKER_ENABLES_SET      F5 03 93 <mask-byte-0> <mask-byte-1>
+MUTE false              F5 02 9E 00
+MUTE true               F5 02 9E 01
+RADAR_OPTIONS_SET       F5 03 D0 <option-id> <value>
+```
+
+These are **current-application static semantics**, not authorization to transmit them. The toolbox keeps all persistent/state-changing forms blocked. Lock/unlock/mute are also kept blocked until deliberately isolated on physical RAD 700i hardware.
+
+Drive Smarter accepts one-byte detector `0x84 LOCK_RESPONSE` and `0x86 UNLOCK_RESPONSE` frames when their result byte is anything other than `0x01`; `0x01` is the explicit error value in the current parser.
+
+
+
+## Current Drive Smarter alert/location IDs
+
+Drive Smarter passes each alert object's `markedLocationId` into the first logical field of `DISPLAY_LOCATION`.
+
+| Type | ID |
+|---|---:|
+| Speed Trap (Defender) | 1 |
+| Speed Camera (Defender) | 2 |
+| Red Light Camera | 3 |
+| Red Light & Speed Camera | 7 |
+| Average Speed Camera | 8 |
+| Air Patrol | 10 |
+| X | 128 |
+| Ku | 129 |
+| K | 130 |
+| Ka | 131 |
+| POP | 132 |
+| Laser | 133 |
+| Stationary Police | 134 |
+| Mobile Camera | 135 |
+| Strelka | 136 |
+| MultaRadar CD | 137 |
+| MultaRadar CT | 138 |
+| Gatso | 139 |
+| Speed Camera (Scout) | 141 |
+| Moving Police | 142 |
+| Accident | 143 |
+| Detour | 144 |
+| Work Zone | 145 |
+| Road Hazard | 146 |
+| Traffic Jam | 147 |
+| VG2 | 148 |
+| Robot | 149 |
+| Gatso RT4 | 150 |
+| Mesta 210c | 151 |
+| Mesta Fusion | 152 |
+| Dahua | 153 |
+
+Average Speed Camera overrides its base ID with `5` for START and `6` for END. Air Patrol uses `9` for START and `11` for END. HOV Lane Camera and SWS expose `-1` rather than a normal positive marked-location ID.
+
+Drive Smarter maps alert threat level YELLOW/ORANGE/RED to protocol level `0/1/2`, reporter USER/DATABASE to `0/1`, and normalizes a negative heading by adding 360 before the five-byte display-location packer.
+
+These values are exact current-app semantics. Physical RAD 700i rendering of the location/community alert family is still unvalidated.
 
 ## Current Drive Smarter display-location packing
 
@@ -419,4 +491,4 @@ After decoding complete 4-byte or 5-byte records, the current app skips SWS reco
 
 ### Status parser note
 
-Drive Smarter 4.12.0.0 accepts Status frames with at least one payload byte but constructs its status object from only the first payload byte. Older compatible-family research describing an embedded A9 tail is therefore retained only as historical/family evidence, not as preferred current-app behavior.
+Drive Smarter 4.12.0.0 accepts Status frames with at least one payload byte but constructs its status object from only the first payload byte. Known bit semantics are communicating=`0x01`, powered=`0x02`, and muted=`0x04`; higher bits remain unresolved. Older compatible-family research describing an embedded A9 tail is therefore retained only as historical/family evidence, not as preferred current-app behavior.
