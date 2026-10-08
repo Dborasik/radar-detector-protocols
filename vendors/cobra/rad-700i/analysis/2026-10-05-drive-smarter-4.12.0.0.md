@@ -262,7 +262,11 @@ Drive Smarter's current `RadarSetting.Type` enum, its `getReqvalue()` keyed hand
 | `2B` | K low band enable |
 | `2C` | Caution area |
 
-The physical capture directly queried IDs `01 02 07 0A 0E 10 13 14 15 16 24 25 26 28 29 2B 2C`. The names above are current-app static semantics; the detector-returned `8A/8B` values remain raw where their user-facing value meanings have not been isolated.
+The physical capture directly queried IDs `01 02 07 0A 0E 10 13 14 15 16 24 25 26 28 29 2B 2C`. The names above are current-app static semantics. For the physically returned values, exact app resource/range labels are applied where the current build defines them; values absent from the current mapping remain raw. App-derived labels remain distinct from independent one-setting-at-a-time physical confirmation.
+
+## Resource-label coverage versus metadata handlers
+
+Drive Smarter maintains two related but different setting maps. Its settings UI resource map can provide value labels even for settings that have no dedicated `0x8B` metadata handler in this build. For example, Speed Alert and Alert Lamp map to the app's generic Off/On resources, while Display Orientation has no current value-resource mapping. Auto Volume maps to a separate Enabled/Disabled resource pair. The protocol/toolbox therefore treats resource labels and read-only metadata-handler availability as separate evidence.
 
 ## Current-app value labels for physically queried settings
 
@@ -296,10 +300,10 @@ Current Drive Smarter code constructs these packets:
 
 - `getRadarOptions`: `F5 02 D1 <RadarOption.ALL>`; the physical capture is `F5 02 D1 00`, establishing `ALL = 0x00` for this build.
 - `radarOptionSet`: `F5 03 D0 <option> <value>`; this is state-changing.
-- `getRadarOptionInfo`: `F5 02 D3 <option>`; this is read-like in code, but individual option IDs were not needed for the observed RAD 700i capture and are not guessed here.
+- `getRadarOptionInfo`: `F5 02 D3 <option>`; this is read-like in code. The exact current option IDs are documented below, but live `D3` replay remains blocked because no physical RAD 700i `D3/AE` exchange has been captured.
 - detector support query: exact zero-payload `F5 01 AF`, represented by the app's detector request table and paired physically with `F5 02 AB 00`.
 
-The app's generic radar-option filter enum contains `OFF=0`, `ON=1`, `LOW=2`, `MEDIUM=3`, and `HIGH=4`; those values must not be assigned to a specific radar option without the relevant option mapping.
+The app's radar-option filter enum contains `OFF=0`, `ON=1`, `LOW=2`, `MEDIUM=3`, and `HIGH=4`; the exact option mapping is documented in the next section.
 
 ## Exact radar-option enum and response handling
 
