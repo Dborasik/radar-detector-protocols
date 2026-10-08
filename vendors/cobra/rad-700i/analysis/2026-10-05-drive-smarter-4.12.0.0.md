@@ -65,6 +65,32 @@ The application also defines turn-by-turn response values `0x01` and `0x02`.
 
 This table is strong evidence for the protocol family implemented by Drive Smarter 4.12.0.0. It does **not** mean every response above is supported or emitted by the RAD 700i.
 
+## Firmware/version component decoding (0x92)
+
+Drive Smarter 4.12 defines a typed `VersionType` table. For the F5 `0x92 VERSION_RESPONSE`, its parser reads a component-code byte and then gathers the following ASCII digits and decimal points as the component version. A code without any version characters does **not** become a version entry. Raw bytes should be retained regardless.
+
+| Code | Current-app component |
+|---|---|
+| `0x40` | MAIN |
+| `0x41` | RECEIVER |
+| `0x42` | AUDIO |
+| `0x43` | GPS |
+| `0x44` | USB |
+| `0x45` | DISPLAY |
+| `0x46` | SHIFTER |
+| `0x47` | S7_ANTENNA |
+| `0x48–0x4C` | M2_ANTENNA through M6_ANTENNA |
+| `0x4D` | SMARTCORD_MAIN |
+| `0x4E` | MASTER_VERSION |
+
+The exact physical RAD 700i version payload includes `40 4D 31 2E 32 2E 33 2E 36 00`. Under this parser, `0x40` does not have a following version string; `0x4D` is followed by `1.2.3.6`. Accordingly, **`1.2.3.6` is associated with `SMARTCORD_MAIN` in the app's type table**, not independently proven to be the radar processor's MAIN firmware revision. The leading `0x40` and trailing zero remain raw unparsed bytes. Other version components require their own observed bytes.
+
+## F5 0xAA BAND_DIRECTION_RESPONSE is acknowledgment-only in this build
+
+Although the response enum calls `0xAA` `BAND_DIRECTION_RESPONSE`, the Drive Smarter 4.12 F5 packet parser returns the equivalent of a simple **OK** result without consuming a direction value. Do not assign an arrow/direction meaning to any `0xAA` payload on this basis. Direction codes currently decoded from `0xA9` five-byte front/rear alert records are a separate mechanism and still need physical RAD 700i validation.
+
+Also distinguish the two transports: F5 `0xAA` is a response command, while `AA 55` is the **start of the separate Cedar turn-by-turn envelope**, not a radar-direction response. No direct RAD 700i physical `0xAA` response or TBT support claim is made here.
+
 ## Parser structure
 
 The application's response parser has explicit branches for both `ALERT_RESPONSE (0x82)` and `ALERT_RESPONSE_FRONT_REAR (0xA9)`, and constructs collections for both alert forms. It separately parses band direction, settings, band masks, marker masks, status, speed-information requests, overspeed requests, display capabilities, authentication messages, radar-options messages, and other response families.
