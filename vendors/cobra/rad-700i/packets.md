@@ -451,6 +451,12 @@ Maneuver packets include maneuver type/modifier, exit number, distance ×10, dis
 
 This transport has **not** been observed in a physical RAD 700i GATT inventory. It remains static application evidence and is not exposed as a live toolbox writer.
 
+## Typed version reporting and F5 band-direction acknowledgments
+
+Drive Smarter 4.12 parses `0x92 VERSION_RESPONSE` as typed components. The exact RAD 700i payload `40 4D 31 2E 32 2E 33 2E 36 00` has a leading `0x40` MAIN marker without an adjacent version; the `0x4D` SMARTCORD_MAIN marker is followed by `1.2.3.6`. Thus `1.2.3.6` is associated with **SMARTCORD_MAIN** in the current-app parser; it is not independent proof of the radar MAIN processor firmware revision. See the current-app version-type table in the [static analysis](analysis/2026-10-05-drive-smarter-4.12.0.0.md).
+
+`0xAA BAND_DIRECTION_RESPONSE` under the **F5 radar framing** returns a simple OK result in the current Drive Smarter parser and has no decoded direction field. This is different from the numeric direction embedded in some `0xA9` front/rear alert records, and entirely different from the `AA 55` header of the separate turn-by-turn transport. Preserve any physical F5 `0xAA` payload raw; no such RAD 700i capture has yet been established.
+
 ## Drive Smarter 4.12.0.0 static response map
 
 Static inspection of the exact hashed Android build documented in `sources.md` reveals a centralized radar response-code table. It independently names the currently implemented family responses, including `0x82 ALERT_RESPONSE`, `0xA9 ALERT_RESPONSE_FRONT_REAR`, `0xAA BAND_DIRECTION_RESPONSE`, `0xAB RADAR_ENABLE_DISABLE_SUPPORT_RESPONSE`, `0xAC RADAR_OPTIONS_RESPONSE`, and `0xAE RADAR_OPTIONS_INFO_RESPONSE`, alongside the settings/band/marker/status/authentication responses already seen in compatible-family research.
