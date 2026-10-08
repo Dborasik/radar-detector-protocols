@@ -393,6 +393,115 @@ The transmitted F5 request is therefore `F5 06 AD p0 p1 p2 p3 p4`. `DISPLAY_CLEA
 
 This establishes the **current Drive Smarter application packing**, but not yet a physical RAD 700i display effect. The toolbox keeps both live writes blocked until a controlled hardware test or Drive Smarter capture exercises them.
 
+## Alert/location IDs passed to DISPLAY_LOCATION
+
+The app's display-alert use case does not invent an arbitrary threat byte. It passes each alert type's `markedLocationId` into the first logical `DISPLAY_LOCATION` field.
+
+### Radar alert marked-location IDs
+
+| Alert | ID |
+|---|---:|
+| X | 128 |
+| Ku | 129 |
+| K | 130 |
+| Ka | 131 |
+| POP | 132 |
+| Laser | 133 |
+| Strelka | 136 |
+| MultaRadar CD | 137 |
+| MultaRadar CT | 138 |
+| Gatso | 139 |
+| VG2 | 148 |
+| Robot | 149 |
+| Gatso RT4 | 150 |
+| Mesta 210c | 151 |
+| Mesta Fusion | 152 |
+| Dahua | 153 |
+
+SWS has marked-location ID `-1` and is therefore not a normal positive location code.
+
+### Scout/community marked-location IDs
+
+| Alert | ID |
+|---|---:|
+| Stationary Police | 134 |
+| Mobile Camera | 135 |
+| Speed Camera | 141 |
+| Moving Police | 142 |
+| Accident | 143 |
+| Detour | 144 |
+| Work Zone | 145 |
+| Road Hazard | 146 |
+| Traffic Jam | 147 |
+
+### Defender marked-location IDs
+
+| Alert | Base ID |
+|---|---:|
+| Speed Trap | 1 |
+| Speed Camera | 2 |
+| Red Light Camera | 3 |
+| Red Light & Speed Camera | 7 |
+| Average Speed Camera | 8 |
+| Air Patrol | 10 |
+| HOV Lane Camera | -1 |
+
+Two Defender types override the base ID by subtype:
+
+- Average Speed Camera: START=`5`, END=`6`, MIDDLE/NONE=`8`.
+- Air Patrol: START=`9`, END=`11`, MIDDLE/NONE=`10`.
+
+The exact `DefenderSubtype` numeric values are START=`0`, MIDDLE=`1`, END=`2`, NONE=`-1`; the marked-location selection above comes from the concrete Defender alert subclasses rather than directly transmitting those subtype values.
+
+The other `DISPLAY_LOCATION` inputs are also explicit:
+
+- threat level YELLOW/ORANGE/RED -> protocol level `0/1/2`;
+- reporter USER -> `0`;
+- reporter DATABASE -> `1`;
+- negative headings are normalized by adding 360 before packing.
+
+These are current Drive Smarter application semantics. A physical RAD 700i community/Defender alert is still required to validate visible rendering of each type.
+
+## Current-app lock, unlock, mute, and state-changing setting packets
+
+Drive Smarter's current alert UI uses exact zero-/one-byte F5 requests:
+
+```text
+LOCK active alert      F5 01 80
+UNLOCK active alert    F5 01 81
+MUTE false             F5 02 9E 00
+MUTE true              F5 02 9E 01
+```
+
+The lock/unlock use cases are invoked by the map/radar-alert UI for alert lockout actions. The response parser treats detector command `0x84` as LOCK_RESPONSE and `0x86` as UNLOCK_RESPONSE, each with one result byte; value `1` is the explicit error value, while the current parser accepts other one-byte values.
+
+The same build constructs these persistent/state-changing requests:
+
+```text
+SETTING_CHANGE      F5 03 83 <setting-id> <value>
+MARKER_ENABLES_SET  F5 03 93 <mask-byte-0> <mask-byte-1>
+RADAR_OPTIONS_SET   F5 03 D0 <option-id> <value>
+BAND_ENABLES_SET    F5 <1+mask-length> 85 <mask bytes...>
+```
+
+These packet constructors are useful protocol documentation but do **not** relax toolbox safety policy. They remain blocked from live replay until a specific physical test is warranted and bounded.
+
+## Exact current-app Status and speed-request flags
+
+The current `RadarStatus` object defines:
+
+- Status bit `0x01`: detector communicating;
+- Status bit `0x02`: detector powered.
+
+The connection handler independently treats Status bit `0x04` as the detector mute state and forwards it to the application's mute-state flow. Bits at `0x08` and above are not semantically reduced by the inspected current-app path.
+
+Therefore:
+
+- physical Status `0x03` = communicating + powered, not muted;
+- physical Status `0x0B` = communicating + powered + unknown bit `0x08`, not muted.
+
+For detector `SPEED_INFORMATION_REQUEST (0xA6)`, Drive Smarter stores only `payload & 0x03`. Its speed sender defines bit `0x01` as speed-limit requested and bit `0x02` as actual-speed requested. The physically captured RAD 700i value `0x03` therefore requests **both** streams.
+
 ## Current-app turn-by-turn transport
 
 Drive Smarter contains a separate Cedar turn-by-turn BLE transport in addition to the normal radar F5 service:
