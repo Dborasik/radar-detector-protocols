@@ -223,21 +223,17 @@ The older approximation that grouped signal strength into five bars and treated 
 
 The independent compatible-family work remains useful corroboration and historical provenance, but the toolbox now follows the current Drive Smarter decoder.
 
-## RAD 700i settings-mapping strategy
+## RAD 700i settings mapping
 
-Cobra's RAD 700i documentation gives a model-specific settings surface that does not exactly match the older compatible-family setting-name table. Documented RAD 700i user settings include Detail (More/Less), Quiet Drive, Auto Mute, Voice, Language, display color, Screen Saver, Smart Power, and Display Car Voltage; the detector also exposes alert/band settings separately.
+The physical Drive Smarter capture proves that the RAD 700i uses `82 <setting-id>` requests with `8A/8B` responses. The exact Drive Smarter 4.12 setting enum now resolves request IDs through `0x2C`, and the current app resource/range tables resolve value labels where this build actually defines them.
 
-Because the physical Drive Smarter capture proves that the RAD 700i uses `82 <setting-id>` requests with `8A/8B` responses, those requests can be used to inventory numeric IDs and supported values without changing detector state. The compatible-family ID/name table is useful as a comparison aid, but **must not be copied as the RAD 700i mapping without controlled correlation**.
+Evidence is kept split by layer:
 
-The recommended mapping procedure is:
+1. **physical RAD 700i evidence:** which setting IDs and numeric values were actually queried/returned;
+2. **current-app static evidence:** symbolic setting names, resource-backed value labels, and range construction;
+3. **still unresolved:** values absent from the app mapping, most notably physical Sensitivity value `0x10`, plus any desired independent one-setting-at-a-time validation.
 
-1. read all supported IDs through `0x82` only;
-2. record the detector's current menu values without changing them;
-3. identify obvious cardinality/default matches only as hypotheses;
-4. where needed, perform a later one-setting-at-a-time Drive Smarter capture;
-5. promote an ID/name/value mapping only after the physical value transition is isolated.
-
-State-changing `0x83` writes remain outside the normal toolbox during this phase.
+The current app's resource-label map is broader than its dedicated `0x8B` metadata-handler map. A label can therefore be exact current-app UI semantics without proving that this build actively queries metadata for that setting. State-changing `0x83` writes remain outside the normal toolbox.
 
 
 ## Additional read-only inventory recovered from the baseline capture
