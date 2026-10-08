@@ -500,19 +500,24 @@ messages:
         confidence: observed
         values:
           "0x03":
-            meaning: Value observed during normal Drive Smarter sessions
-            confidence: observed
+            meaning: Communicating + powered; mute bit clear
+            confidence: inferred
             evidence:
               - drive-smarter-capture-2026-09-11
+              - drive-smarter-static-analysis-4-12-0-0
           "0x0B":
-            meaning: Additional state-dependent status value observed during an authenticated toolbox session; bit semantics unknown
-            confidence: observed
+            meaning: Communicating + powered + unresolved bit 0x08; mute bit clear
+            confidence: inferred
             evidence:
               - toolbox-observations-2026-09-29
+              - drive-smarter-static-analysis-4-12-0-0
         evidence:
           - drive-smarter-capture-2026-09-11
           - toolbox-observations-2026-09-29
     notes:
+      - Drive Smarter 4.12 defines bit 0x01 as detector communicating and bit 0x02 as detector powered.
+      - The current connection handler uses bit 0x04 as the detector mute state.
+      - Bits 0x08 and above remain unresolved in the inspected current-app path; preserve them raw.
       - The status byte is state-dependent; do not treat 0x03 as a universal success constant.
 
   - id: model-info-response
@@ -550,6 +555,7 @@ messages:
           - drive-smarter-capture-2026-09-11
         notes:
           - Observed payload contains ASCII RAD 700i after leading 0x03.
+          - Drive Smarter 4.12 maps protocol device type 0=ESCORT, 1=Beltronics, 2=Cincinati Microwaves, 3=Cobra; the physical leading 0x03 therefore identifies Cobra.
 
   - id: version-response
     transport: ble-main
@@ -1503,6 +1509,270 @@ messages:
     notes:
       - Drive Smarter sends D3 followed by one concrete option ID when option metadata is missing.
       - The toolbox does not issue D3 because no physical RAD 700i D3/AE exchange has been captured.
+
+  - id: lock-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: inferred
+    description: Current Drive Smarter active-alert lockout request. State-changing; documented but not enabled by the toolbox.
+    minimum_length: 3
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x80":
+            meaning: LOCK_REQUEST
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Exact current-app packet is F5 01 80.
+      - The map/radar-alert UI invokes this for alert lockout actions.
+      - No physical RAD 700i lockout write is intentionally exercised by this repository.
+
+  - id: unlock-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: inferred
+    description: Current Drive Smarter active-alert unlock request. State-changing; documented but not enabled by the toolbox.
+    minimum_length: 3
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x81":
+            meaning: UNLOCK_REQUEST
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Exact current-app packet is F5 01 81.
+      - No physical RAD 700i unlock write is intentionally exercised by this repository.
+
+  - id: mute-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: inferred
+    description: Current Drive Smarter mute-state request. Transient but not yet physically isolated through this repository.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x9E":
+            meaning: MUTE
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: muted
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x00":
+            meaning: unmuted
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+          "0x01":
+            meaning: muted
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Exact current-app packets are F5 02 9E 00 and F5 02 9E 01.
+      - Live toolbox replay remains blocked pending controlled physical validation.
+
+  - id: setting-change-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: inferred
+    description: Current Drive Smarter persistent setting-change request. Never part of read-only discovery.
+    minimum_length: 5
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x83":
+            meaning: SETTING_CHANGE
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: setting_id
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: value
+        offset: 4
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Exact current-app shape is F5 03 83 <setting-id> <value>.
+      - Toolbox safety policy blocks this command.
+
+  - id: band-enables-set-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: inferred
+    description: Current Drive Smarter state-changing band-enable mask write.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x85":
+            meaning: BAND_ENABLES_SET
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: mask
+        offset: 3
+        length: variable
+        type: bytes
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - F5 length byte is mask length + 1.
+      - Toolbox safety policy blocks this command.
+
+  - id: marker-enables-set-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: inferred
+    description: Current Drive Smarter state-changing two-byte marker-enable mask write.
+    minimum_length: 5
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x93":
+            meaning: MARKER_ENABLES_SET
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: mask
+        offset: 3
+        length: 2
+        type: bytes
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Exact current-app shape is F5 03 93 <mask-byte-0> <mask-byte-1>.
+      - Toolbox safety policy blocks this command.
+
+  - id: radar-options-set-request
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: inferred
+    description: Current Drive Smarter state-changing radar-option write.
+    minimum_length: 5
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0xD0":
+            meaning: RADAR_OPTIONS_SET
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: option_id
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: value
+        offset: 4
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Exact current-app shape is F5 03 D0 <option-id> <value>.
+      - Toolbox safety policy blocks this command.
 
   - id: display-location-request
     transport: ble-main
