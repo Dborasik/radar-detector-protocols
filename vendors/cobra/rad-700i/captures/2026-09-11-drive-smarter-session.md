@@ -46,6 +46,8 @@ detector -> client  F5 02 A6 03
 
 The `A1 -> A4` pair exactly matches the compatible-family BLE smartcord-key transform for the captured challenge.
 
+Subsequent inspection of the exact Drive Smarter 4.12 build resolves the following physical `A6 03` frame: the app masks the A6 payload with `0x03`, defines bit 0 as the posted-speed-limit request flag and bit 1 as the actual-speed request flag, so captured value `03` requests both.
+
 ## Observed query/response pairs
 
 ```text
@@ -69,7 +71,7 @@ F5 03 AA 00 00
 F5 02 AB 00
 ```
 
-Compatible-family protocol tables identify `A9` as speed-limit update, `AA` as actual-speed update, and `AB` as overspeed-limit data. This capture directly establishes that the RAD 700i accepts/uses those command IDs in normal Drive Smarter traffic. Exact unit semantics were not independently varied in this capture, so payload interpretation remains conservative.
+Current Drive Smarter static analysis identifies `A9` as posted speed-limit update, `AA` as actual-speed update, and `AB` as overspeed-limit data. This capture directly establishes that the RAD 700i uses those command IDs in normal Drive Smarter traffic. For AB specifically, Drive Smarter emits `00` when its overspeed preference resolves to OFF (`-1`); otherwise it converts a positive configured over-limit value for the active unit mode when needed, adds 64, and sends one byte. The repeated physical `AB 00` therefore matches the exact current-app OFF path.
 
 ## Settings discovery traffic
 
@@ -138,9 +140,28 @@ Drive Smarter queried these setting IDs with `F5 02 82 <id>`. For each listed ID
 | `2B` | `2B 00 01` | `00` |
 | `2C` | `2C 00 01` | `01` |
 
-The table above is direct RAD 700i wire evidence. Later Drive Smarter 4.12 static analysis resolves the current-app symbolic names for these observed IDs: `01 Sensitivity`, `02 Brightness`, `07 AutoMute`, `0A Voice`, `0E Units`, `10 AutoLearn`, `13 Cruise alert`, `14 Over speed alert`, `15 Language`, `16 Display color`, `24 Detail`, `25 Screen saver`, `26 Smart power`, `28 Low voltage alert`, `29 Quiet drive`, `2B K low band enable`, and `2C Caution area`. That names the request IDs; detector-returned value semantics still require physical correlation where not independently established.
+The table above is direct RAD 700i wire evidence. Later Drive Smarter 4.12 static analysis resolves the current-app symbolic names for these observed IDs: `01 Sensitivity`, `02 Brightness`, `07 AutoMute`, `0A Voice`, `0E Units`, `10 AutoLearn`, `13 Cruise alert`, `14 Over speed alert`, `15 Language`, `16 Display color`, `24 Detail`, `25 Screen saver`, `26 Smart power`, `28 Low voltage alert`, `29 Quiet drive`, `2B K low band enable`, and `2C Caution area`.
 
-For IDs `13` and `14`, the three information bytes `14 A0 05` match the compatible-family range convention of minimum `20`, maximum `160`, increment `5`. That interpretation remains corroborated/inferred until the RAD 700i UI setting is isolated.
+The same exact app build also resolves most values without changing the detector:
+
+| ID | Current app labels for captured values | Captured current value |
+|---:|---|---|
+| `01` | `00 Auto`, `07 Low`, `08 Medium`, `09 High`; `10` has no current-app label | `10` = intentionally unmapped |
+| `02` | Full dark / Minimum / Medium / Maximum | Minimum |
+| `07` | Off / On | On |
+| `0A` | Off / On | On |
+| `0E` | Imperial / Metric | Imperial |
+| `10` | Off / On | On |
+| `13` | Off plus 20–160 step 5 | Off |
+| `14` | Off plus 20–160 step 5 | Off |
+| `15` | English / Spanish | English |
+| `16` | White / Green / Blue / Red / Yellow for the captured supported-value order | Red |
+| `24` | Less / More | More |
+| `25` | Off / 1 Minute / 3 Minute for the captured supported-value order | 1 Minute |
+| `26`, `28`, `29`, `2B` | Off / On | Off |
+| `2C` | Off / On | On |
+
+These labels are current-app static interpretation applied to physically observed bytes, not a claim that each menu choice was independently toggled on the detector. The Sensitivity `0x10` anomaly is preserved raw because Drive Smarter's own indexed sensitivity resource table has no entry 16.
 
 ### Other recurring traffic recovered from the same capture
 
@@ -151,4 +172,4 @@ detector -> client  F5 02 A6 03
 client -> detector  F5 02 AB 00
 ```
 
-Zero-payload `0x82` occurred repeatedly while there was no active radar alert. `A7` was zero-payload on the physical RAD 700i. `A6 03` was directly observed after authentication, but the meaning of request-kind value `03` remains unknown. Client `AB 00` was repeatedly sent by Drive Smarter; compatible-family research calls this overspeed-limit data with value zero/off.
+Zero-payload `0x82` occurred repeatedly while there was no active radar alert. `A7` was zero-payload on the physical RAD 700i. The exact current-app logic resolves `A6 03` as bit 0 + bit 1, requesting both posted speed-limit and actual-speed data. Client `AB 00` was repeatedly sent by Drive Smarter and current-app code resolves it as the OFF/no-threshold overspeed path.
