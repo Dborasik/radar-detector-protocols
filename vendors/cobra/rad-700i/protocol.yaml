@@ -1510,6 +1510,485 @@ messages:
       - Drive Smarter sends D3 followed by one concrete option ID when option metadata is missing.
       - The toolbox does not issue D3 because no physical RAD 700i D3/AE exchange has been captured.
 
+  - id: mute-button-press-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Current Drive Smarter mute-button event response.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x80":
+            meaning: MUTE_BUTTON_PRESS
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: value
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - The current parser validates exactly one payload byte but does not assign semantics to its value.
+
+  - id: lock-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Response to current-app LOCK_REQUEST.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x84":
+            meaning: LOCK_RESPONSE
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: result
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x01":
+            meaning: explicit error value in current Drive Smarter parser
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Current parser accepts any one-byte result other than 0x01.
+
+  - id: unlock-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Response to current-app UNLOCK_REQUEST.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x86":
+            meaning: UNLOCK_RESPONSE
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: result
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x01":
+            meaning: explicit error value in current Drive Smarter parser
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Current parser accepts any one-byte result other than 0x01.
+
+  - id: flash-erase-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Current Drive Smarter flash-erase response shape; no flash operation is enabled by the toolbox.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x90":
+            meaning: FLASH_ERASE_RESPONSE
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: value
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - The current parser preserves the one-byte value without assigning richer semantics.
+
+  - id: firmware-update-status-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Current Drive Smarter firmware-update status response shape.
+    minimum_length: 5
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x94":
+            meaning: FIRMWARE_UPDATE_STATUS
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: status_data
+        offset: 3
+        length: 2
+        type: bytes
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - The inspected parser validates two payload bytes but does not reduce them into named fields.
+      - Firmware and flash operations remain blocked by the toolbox.
+
+  - id: report-button-press-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Current Drive Smarter report-button event response.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x9C":
+            meaning: REPORT_BUTTON_PRESS
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: value
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Current parser validates the byte but returns only an OK event.
+
+  - id: model-number-request
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Detector request for the client model-number acknowledgement.
+    minimum_length: 3
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x9D":
+            meaning: MODEL_NUMBER_REQUEST
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Current Drive Smarter handler replies F5 02 9D 00.
+
+  - id: model-number-response-acknowledgement
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: inferred
+    description: Exact current Drive Smarter acknowledgement for detector MODEL_NUMBER_REQUEST.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x9D":
+            meaning: MODEL_NUMBER_RESPONSE
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: acknowledgement
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x00":
+            meaning: exact value emitted by current Drive Smarter
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - This exact static-app reply is not enabled as a general toolbox write.
+
+  - id: update-approval-request
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Current Drive Smarter update-approval request response family.
+    minimum_length: 6
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0xA0":
+            meaning: UPDATE_APPROVAL_REQUEST
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: request_data
+        offset: 3
+        length: 3
+        type: bytes
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Current parser requires exactly three payload bytes and does not reduce their internal fields.
+
+  - id: update-approval-response
+    transport: ble-main
+    endpoint: tx-characteristic
+    direction: client-to-detector
+    confidence: inferred
+    description: Current Drive Smarter acknowledgement/decline command for UPDATE_APPROVAL_REQUEST.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0xA1":
+            meaning: UPDATE_APPROVAL_RESPONSE
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: response
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0x00":
+            meaning: acknowledgement value emitted first by current Drive Smarter
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+          "0x02":
+            meaning: decline value emitted by the inspected current handler path
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - The inspected path emits A1/00 then A1/02 because the parsed A0 response object is null.
+      - Firmware/update writes remain blocked by the toolbox.
+
+  - id: bluetooth-connection-delay-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Current Drive Smarter Bluetooth connection-delay response shape.
+    minimum_length: 5
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0xA4":
+            meaning: BLUETOOTH_CONNECTION_DELAY_RESPONSE
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: data
+        offset: 3
+        length: 2
+        type: bytes
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Direction disambiguates this from client-to-detector Bluetooth unlock response command 0xA4.
+
+  - id: bluetooth-serial-number-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Current Drive Smarter fixed-length Bluetooth serial-number response.
+    minimum_length: 11
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0xA5":
+            meaning: BLUETOOTH_SERIAL_NUMBER_RESPONSE
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: serial
+        offset: 3
+        length: 8
+        type: bytes
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Current parser decodes the eight payload bytes as UTF-8 text.
+      - Direction disambiguates this from client-to-detector Bluetooth unlock status command 0xA5.
+
+  - id: unsupported-request-response
+    transport: ble-main
+    endpoint: alert-characteristic
+    direction: detector-to-client
+    confidence: inferred
+    description: Current Drive Smarter unsupported-request response.
+    minimum_length: 4
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    fields:
+      - name: command
+        offset: 2
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        values:
+          "0xF0":
+            meaning: UNSUPPORTED_REQUEST
+            confidence: inferred
+            evidence:
+              - drive-smarter-static-analysis-4-12-0-0
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+      - name: unsupported_command
+        offset: 3
+        length: 1
+        type: u8
+        endianness: null
+        confidence: inferred
+        evidence:
+          - drive-smarter-static-analysis-4-12-0-0
+    notes:
+      - Current app has special fallback handling for rejected AC display-capabilities, A3 unlock-request, and D1 radar-options-request commands.
+
   - id: lock-request
     transport: ble-main
     endpoint: tx-characteristic
