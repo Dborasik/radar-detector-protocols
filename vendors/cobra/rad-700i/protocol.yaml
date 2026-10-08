@@ -1,6 +1,6 @@
 schema_version: "1.0"
 protocol_id: cobra.rad-700i
-contract_revision: 8
+contract_revision: 9
 
 vendor:
   name: Cobra
@@ -2435,6 +2435,21 @@ messages:
       - The physical RAD 700i frame F5 01 A7 contains no payload in this observation, differing from some older compatible-family comments that annotate one data byte.
 
 hypotheses:
+  - id: drive-smarter-typed-version-components
+    confidence: inferred
+    description: Drive Smarter 4.12 VERSION_RESPONSE (0x92) parses component type bytes followed by ASCII digits/dots. Component 0x4D is SMARTCORD_MAIN; the captured RAD 700i bytes 40 4D 31 2E 32 2E 33 2E 36 00 associate 1.2.3.6 with 0x4D, not with the preceding 0x40 MAIN marker. Empty version entries are not emitted by the app.
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+      - drive-smarter-capture-2026-09-11
+    test_needed: Capture additional version components on physical RAD 700i hardware and preserve all unparsed bytes; do not assume a MAIN processor firmware version from the SMARTCORD_MAIN marker.
+
+  - id: drive-smarter-f5-band-direction-ack-only
+    confidence: inferred
+    description: Drive Smarter 4.12 recognizes F5 command 0xAA as BAND_DIRECTION_RESPONSE but returns only an OK acknowledgment; it does not parse a direction field from this response. This is distinct from 0xA9 front/rear alert record direction and from the AA 55 turn-by-turn envelope.
+    evidence:
+      - drive-smarter-static-analysis-4-12-0-0
+    test_needed: Capture an actual F5 0xAA frame from the RAD 700i before claiming it is supported on that model; if payload bytes exist preserve them raw.
+
   - id: drive-smarter-current-response-map
     confidence: inferred
     description: Drive Smarter Android 4.12.0.0 contains a centralized radar response-code table covering alert, settings, band, marker, status, authentication, radar-options, update, and related response families. Presence in the app does not imply support by every detector model.
