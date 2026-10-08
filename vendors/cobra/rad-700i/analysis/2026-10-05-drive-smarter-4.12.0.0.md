@@ -393,6 +393,38 @@ The transmitted F5 request is therefore `F5 06 AD p0 p1 p2 p3 p4`. `DISPLAY_CLEA
 
 This establishes the **current Drive Smarter application packing**, but not yet a physical RAD 700i display effect. The toolbox keeps both live writes blocked until a controlled hardware test or Drive Smarter capture exercises them.
 
+## Remaining current-app response shapes and maintenance replies
+
+The current Drive Smarter response parser also gives exact validation rules for several less common response families:
+
+| Detector response | Current parser shape |
+|---|---|
+| `0x80 MUTE_BUTTON_PRESS` | exactly one payload byte; value is not semantically reduced by the parser |
+| `0x81 GPS_EQUIPPED_RESPONSE` | exactly one payload byte |
+| `0x84 LOCK_RESPONSE` | exactly one result byte; value `1` is error |
+| `0x86 UNLOCK_RESPONSE` | exactly one result byte; value `1` is error |
+| `0x90 FLASH_ERASE_RESPONSE` | exactly one payload byte |
+| `0x94 FIRMWARE_UPDATE_STATUS` | exactly two payload bytes; parser only classifies the response |
+| `0x9C REPORT_BUTTON_PRESS` | exactly one payload byte; parser returns OK without interpreting it |
+| `0x9D MODEL_NUMBER_REQUEST` | classified as a request from detector; current handler responds `F5 02 9D 00` |
+| `0xA0 UPDATE_APPROVAL_REQUEST` | exactly three payload bytes; parser does not reduce their fields |
+| `0xA4 BLUETOOTH_CONNECTION_DELAY_RESPONSE` | exactly two payload bytes; parser returns OK |
+| `0xA5 BLUETOOTH_SERIAL_NUMBER_RESPONSE` | exactly eight payload bytes decoded as UTF-8 text |
+| `0xF0 UNSUPPORTED_REQUEST` | exactly one payload byte containing the unsupported request code |
+
+For `UPDATE_APPROVAL_REQUEST (0xA0)`, the inspected current handler sends:
+
+```text
+F5 02 A1 00   updateApprovalAcknowledge
+F5 02 A1 02   updateApprovalDecline
+```
+
+The second packet follows because the current parser's A0 response object is `null` in this path. This documents what this exact app build does; it is **not** enough to implement firmware updating, and the toolbox keeps `0xA1`, flash, and firmware operations blocked.
+
+For detector `MODEL_NUMBER_REQUEST (0x9D)`, the current handler replies with `F5 02 9D 00`. This request/reply pair is application-family static evidence and has not been isolated in the physical RAD 700i baseline capture.
+
+For `UNSUPPORTED_REQUEST (0xF0)`, the app has special fallback handling when the rejected command is display-capabilities (`AC`), Bluetooth protocol unlock request (`A3`), or radar-options request (`D1`). Other unsupported-command bytes are retained only as diagnostics.
+
 ## Alert/location IDs passed to DISPLAY_LOCATION
 
 The app's display-alert use case does not invent an arbitrary threat byte. It passes each alert type's `markedLocationId` into the first logical `DISPLAY_LOCATION` field.
