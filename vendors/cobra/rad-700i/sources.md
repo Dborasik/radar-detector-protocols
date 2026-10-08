@@ -1,6 +1,6 @@
 # Sources and provenance
 
-## Drive Smarter Android inspection target — 2026-10-05
+## Drive Smarter Android inspection target — 2026-10-05 through 2026-10-08
 
 Installed package: `com.cedarelectronics.smartsight`  
 Version name: `4.12.0.0`  
@@ -45,11 +45,15 @@ A deeper pass over the same exact build additionally establishes:
 
 - the exact two-byte marker-enable bit map;
 - radar-option IDs `0..6`, filter values `0..4`, `0xAC` repeated option/value parsing, and `0xAE` LIST/NUMBER metadata parsing;
-- exact current-app `DISPLAY_LOCATION (0xAD)` five-byte packing and zero-payload `DISPLAY_CLEAR_LOCATION (0xAE)`;
+- exact current-app setting value-resource tables, with read-only metadata-handler support tracked separately;
+- exact current-app Status and `A6` speed-information flag semantics;
+- exact current-app lock/unlock/mute, setting/band/marker/radar-option write packet shapes, retained as documentation only;
+- exact current-app `DISPLAY_LOCATION (0xAD)` five-byte packing, alert/location IDs, and zero-payload `DISPLAY_CLEAR_LOCATION (0xAE)`;
+- current maintenance/fallback response shapes, including model-number and update-approval reply behavior;
 - the app's separate Cedar turn-by-turn BLE UUID family and `AA 55 ... BB 66` message envelope;
 - exact current-app maneuver/modifier/unit code tables and maneuver-frame construction.
 
-These derived semantics are recorded in [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md). They are current-application evidence; commands or alert forms are only promoted to RAD 700i-observed status when backed by physical capture/experiment evidence.
+The source-wide deep-dive was completed on 2026-10-08. These derived semantics are recorded in [`analysis/2026-10-05-drive-smarter-4.12.0.0.md`](analysis/2026-10-05-drive-smarter-4.12.0.0.md). They are current-application evidence; commands or alert forms are only promoted to RAD 700i-observed status when backed by physical capture/experiment evidence.
 
 
 ### Negative/static search result: GPS FE51 UUID
